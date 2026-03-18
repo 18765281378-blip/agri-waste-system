@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="min-h-screen bg-emerald-50 text-slate-800">
+    <div class="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-200/80 via-emerald-50 to-white"></div>
+
+    <header class="mx-auto max-w-6xl px-6 pt-10">
+      <div class="flex items-center justify-between gap-4">
+        <a href="/" class="text-sm text-slate-600 hover:text-slate-900 transition">返回首页</a>
+        <a href="/grading" class="text-sm text-slate-600 hover:text-slate-900 transition">看图分级教学</a>
+      </div>
+      <h1 class="mt-6 text-3xl font-semibold tracking-tight text-slate-900">智能推荐（Top3）</h1>
+      <p class="mt-3 text-slate-600 leading-relaxed">
+        选择副产物与质量等级，系统会先做红线过滤，再用模型评分排序，并给出推荐原因与贡献度要点。
+      </p>
+    </header>
+
+    <main class="mx-auto max-w-6xl px-6 pb-16 pt-10">
+      <section class="grid gap-6 lg:grid-cols-3">
+        <div class="lg:col-span-1 rounded-3xl bg-white ring-1 ring-emerald-100 shadow-sm shadow-emerald-50 p-6">
+          <div class="text-sm font-semibold text-slate-900">输入信息</div>
+          <form id="form" class="mt-4 grid gap-4">
+            <label class="grid gap-2">
+              <span class="text-xs text-slate-600">原料类型</span>
+              <select id="material" class="rounded-xl bg-white ring-1 ring-emerald-100 px-3 py-2 text-sm outline-none focus:ring-emerald-400/40">
+                <option>茶渣</option>
+                <option>果渣（柑橘/葡萄/猕猴桃等）</option>
+                <option>花生壳/板栗壳</option>
+                <option>豆制品/粮食发酵副产物</option>
+                <option>中药残余废弃物</option>
+              </select>
+            </label>
+
+            <div class="grid grid-cols-2 gap-3">
+              <label class="grid gap-2">
+                <span class="text-xs text-slate-600">霉变情况</span>
+                <select id="mold" class="rounded-xl bg-white ring-1 ring-emerald-100 px-3 py-2 text-sm outline-none focus:ring-emerald-400/40">
+                  <option>无</option>
+                  <option>轻度</option>
+                  <option>严重</option>
+                </select>
+              </label>
+              <label class="grid gap-2">
+                <span class="text-xs text-slate-600">来源情况</span>
+                <select id="source" class="rounded-xl bg-white ring-1 ring-emerald-100 px-3 py-2 text-sm outline-none focus:ring-emerald-400/40">
+                  <option>明确可追溯</option>
+                  <option>基本可追溯</option>
+                  <option>来源不明</option>
+                </select>
+              </label>
+            </div>
+
+            <label class="grid gap-2">
+              <span class="text-xs text-slate-600">预估等级（优/良/中/差）</span>
+              <select id="grade" class="rounded-xl bg-white ring-1 ring-emerald-100 px-3 py-2 text-sm outline-none focus:ring-emerald-400/40">
+                <option>优</option>
+                <option>良</option>
+                <option>中</option>
+                <option>差</option>
+              </select>
+              <span class="text-[11px] text-slate-500">提示：当前模型训练集仅含“优/良/差”，“中”会临时按“良”进入模型。</span>
+            </label>
+
+            <div id="extra" class="grid gap-3"></div>
+
+            <button type="submit" class="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-400 shadow-sm shadow-emerald-200 transition">
+              生成推荐方案
+            </button>
+          </form>
+
+          <div id="error" class="mt-4 hidden rounded-2xl bg-rose-500/10 ring-1 ring-rose-400/20 p-4 text-sm text-rose-200"></div>
+        </div>
+
+        <div class="lg:col-span-2">
+          <div class="flex items-center justify-between">
+            <div class="text-sm font-semibold text-slate-900">推荐结果</div>
+            <button id="exportBtn" class="hidden rounded-xl bg-white px-3 py-2 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-50 transition">
+              导出 JSON
+            </button>
+          </div>
+          <div id="cards" class="mt-4 grid gap-4"></div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const form = document.getElementById("form");
+      const materialEl = document.getElementById("material");
+      const extraEl = document.getElementById("extra");
+      const cardsEl = document.getElementById("cards");
+      const errorEl = document.getElementById("error");
+      const exportBtn = document.getElementById("exportBtn");
+      let lastPayload = null;
+
+      function setError(msg) {
+        if (!msg) {
+          errorEl.classList.add("hidden");
+          errorEl.textContent = "";
+          return;
+        }
+        errorEl.classList.remove("hidden");
+        errorEl.textContent = msg;
+      }
+
+      function renderExtra() {
+        const material = materialEl.value;
+        extraEl.innerHTML = "";
+        if (material === "茶渣") {
+          extraEl.innerHTML = `
+            <div class="grid grid-cols-2 gap-3">
+              <label class="grid gap-2">
+                <span class="text-xs text-slate-600">是否含调味</span>
+                <select id="flavor" class="rounded-xl bg-white ring-1 ring-emerald-100 px-3 py-2 text-sm outline-none focus:ring-emerald-400/40">
+                  <option>否</option>
+                  <option>是</option>
+                </select>
+              </label>
+              <label class="grid gap-2">
+                <span class="text-xs text-slate-600">储存时间是否超过3天</span>
+                <select id="storage" class="rounded-xl bg-white ring-1 ring-emerald-100 px-3 py-2 text-sm outline-none focus:ring-emerald-400/40">
+                  <option>否</option>
+                  <option>是</option>
+                </select>
+              </label>
+            </div>
+          `;
+        } else if (material === "果渣（柑橘/葡萄/猕猴桃等）") {
+          extraEl.innerHTML = `
+            <label class="grid gap-2">
+              <span class="text-xs text-slate-600">是否有明显褐变</span>
+              <select id="browning" class="rounded-xl bg-white ring-1 ring-emerald-100 px-3 py-2 text-sm outline-none focus:ring-emerald-400/40">
+                <option>否</option>
+                <option>是</option>
+              </select>
+            </label>
+          `;
+        }
+      }
+
+      function cardTemplate(item, idx) {
+        const exp = item.explanation || {};
+        const red = (exp.red_line_reasons || []).map(r => `<li>${r}</li>`).join("");
+        const core = (exp.core_reasons || []).map(r => `<span class="rounded-lg bg-emerald-50 ring-1 ring-emerald-100 px-2 py-1 text-[11px] text-emerald-800">${r}</span>`).join(" ");
+        const contrib = (exp.feature_contributions_top || []).map(c => {
+          const v = (c.contribution >= 0 ? "+" : "") + c.contribution.toFixed(3);
+          return `<li><span class="text-slate-800">${c.feature}</span>：<span class="text-slate-700">${v}</span></li>`;
+        }).join("");
+
+        return `
+          <div class="rounded-3xl bg-white ring-1 ring-emerald-100 shadow-sm shadow-emerald-50 p-6">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <div class="text-lg font-semibold">${item["路线名称"]}</div>
+                <div class="mt-1 text-xs text-slate-600">
+                  路线编号：${item["路线编号"]} · 目标：${item["首选目标"]} · 风险：${item["风险等级"]} · 强度：${item["推荐强度"]}
+                </div>
+              </div>
+              <div class="rounded-xl bg-emerald-500/15 text-emerald-800 ring-1 ring-emerald-400/30 px-3 py-1 text-xs font-semibold">
+                Top ${idx + 1} · 得分 ${Number(item["匹配得分"]).toFixed(2)}/12
+              </div>
+            </div>
+            <div class="mt-4 grid gap-3 md:grid-cols-2">
+              <div class="rounded-2xl bg-emerald-50 ring-1 ring-emerald-100 p-4">
+                <div class="text-xs font-semibold text-slate-900">推荐理由关键词</div>
+                <div class="mt-2 text-sm text-slate-700">${item["推荐理由关键词"] || "—"}</div>
+                <div class="mt-3 flex flex-wrap gap-2">${core}</div>
+              </div>
+              <div class="rounded-2xl bg-white ring-1 ring-emerald-100 p-4">
+                <div class="text-xs font-semibold text-slate-900">可解释要点（贡献度 Top）</div>
+                <ul class="mt-2 space-y-1 text-sm text-slate-700">
+                  ${contrib || "<li>（当前模型不支持贡献度输出或依赖未就绪）</li>"}
+                </ul>
+              </div>
+            </div>
+            ${red ? `
+              <div class="mt-4 rounded-2xl bg-rose-50 ring-1 ring-rose-200 p-4">
+                <div class="text-xs font-semibold text-rose-700">红线提示（本路线在最终推荐中应为合规；若出现则说明规则需校准）</div>
+                <ul class="mt-2 list-disc pl-5 text-sm text-rose-600">${red}</ul>
+              </div>
+            ` : ""}
+          </div>
+        `;
+      }
+
+      materialEl.addEventListener("change", renderExtra);
+      renderExtra();
+
+      exportBtn.addEventListener("click", () => {
+        if (!lastPayload) return;
+        const blob = new Blob([JSON.stringify(lastPayload, null, 2)], { type: "application/json;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "recommendation_result.json";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        setError(null);
+        cardsEl.innerHTML = `<div class="rounded-3xl bg-white ring-1 ring-emerald-100 p-6 text-sm text-slate-700">正在生成推荐...</div>`;
+
+        const user_profile = {
+          "原料类型": materialEl.value,
+          "霉变情况": document.getElementById("mold").value,
+          "来源情况": document.getElementById("source").value,
+          "预估等级": document.getElementById("grade").value,
+        };
+        const flavor = document.getElementById("flavor");
+        const storage = document.getElementById("storage");
+        const browning = document.getElementById("browning");
+        if (flavor) user_profile["是否含调味"] = flavor.value;
+        if (storage) user_profile["储存时间"] = storage.value;
+        if (browning) user_profile["褐变情况"] = browning.value;
+
+        const payload = { user_profile };
+        try {
+          const res = await fetch("/api/recommend", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data?.detail || "请求失败");
+          lastPayload = data;
+          exportBtn.classList.remove("hidden");
+          const items = data.recommendations || [];
+          if (!items.length) {
+            cardsEl.innerHTML = `<div class="rounded-3xl bg-white ring-1 ring-emerald-100 p-6 text-sm text-slate-700">暂无推荐结果。</div>`;
+            return;
+          }
+          cardsEl.innerHTML = items.map((it, idx) => cardTemplate(it, idx)).join("");
+        } catch (err) {
+          exportBtn.classList.add("hidden");
+          cardsEl.innerHTML = "";
+          setError(err.message || String(err));
+        }
+      });
+    </script>
+  </body>
+</html>
+
