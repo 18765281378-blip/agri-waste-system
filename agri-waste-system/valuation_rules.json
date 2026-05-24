@@ -1,0 +1,38 @@
+{
+  "base_scores": {
+    "茶渣": { "economic": 7, "environmental": 8, "energy": 6, "feasibility": 9 },
+    "果渣（柑橘/葡萄/猕猴桃等）": { "economic": 8, "environmental": 7, "energy": 5, "feasibility": 8 },
+    "花生壳/板栗壳": { "economic": 6, "environmental": 7, "energy": 8, "feasibility": 7 },
+    "豆制品/粮食发酵副产物": { "economic": 8, "environmental": 6, "energy": 7, "feasibility": 8 },
+    "中药残余废弃物": { "economic": 7, "environmental": 5, "energy": 6, "feasibility": 6 }
+  },
+  "moisture_adjust": {
+    "低": { "economic": 1, "environmental": 0, "energy": 1, "feasibility": 1 },
+    "中": { "economic": 0, "environmental": 0, "energy": 0, "feasibility": 0 },
+    "高": { "economic": -1, "environmental": -1, "energy": -2, "feasibility": -1 }
+  },
+  "impurity_adjust": {
+    "低": { "economic": 1, "environmental": 0, "energy": 1, "feasibility": 1 },
+    "中": { "economic": 0, "environmental": 0, "energy": 0, "feasibility": 0 },
+    "高": { "economic": -2, "environmental": -1, "energy": -1, "feasibility": -2 }
+  },
+  "season_adjust": {
+    "春季": { "economic": 0, "environmental": 0, "energy": 0, "feasibility": 0 },
+    "夏季": { "economic": -1, "environmental": 0, "energy": -1, "feasibility": -1 },
+    "秋季": { "economic": 0, "environmental": 0, "energy": 0, "feasibility": 0 },
+    "冬季": { "economic": -1, "environmental": 0, "energy": -1, "feasibility": 0 }
+  },
+  "origin_adjust": {
+    "本地": { "economic": 1, "environmental": 1, "energy": 0, "feasibility": 1 },
+    "省内": { "economic": 0, "environmental": 0, "energy": 0, "feasibility": 0 },
+    "省外": { "economic": -1, "environmental": -1, "energy": 0, "feasibility": -1 },
+    "进口": { "economic": -2, "environmental": -2, "energy": 0, "feasibility": -2 }
+  },
+  "disposal_suggestions": {
+    "经济价值高且可行性高": "优先考虑高价值提取（如多酚、果胶、活性成分）或食品支线。",
+    "环保价值高": "推荐堆肥、土壤改良剂或碳封存（生物炭）。",
+    "能源价值高": "推荐制备生物质颗粒燃料、厌氧发酵产沼气或直接燃烧发电。",
+    "可行性高但经济一般": "可走材料路线（板材、吸附材料）或农用资源化。",
+    "综合偏低": "建议无害化处理或填埋，不推荐高成本加工。"
+  }
+}

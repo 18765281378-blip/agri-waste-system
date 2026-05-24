@@ -23,31 +23,39 @@ def preprocess_features(df, is_train=True):
         "果渣_褐变情况": {"否": 0, "是": 1, "无": -1}
     }
     
-    # 执行编码，避免NaN
     for feat, mapping in ordinal_mapping.items():
         if feat in df.columns:
-            df[feat] = df[feat].map(mapping).fillna(-1)  # 异常值填充-1，避免NaN
+            df[feat] = df[feat].map(mapping).fillna(-1)
     
-    # 3. 无序分类特征的One-Hot编码（仅对低基数特征做，避免维度爆炸）
+    # 3. 无序分类特征的One-Hot编码
     one_hot_features = ["原料类型", "路线_首选目标"]
     df = pd.get_dummies(df, columns=one_hot_features, drop_first=True, dummy_na=False)
     
-    # 4. 核心强特征保留（原料是否匹配、等级是否匹配，不需要编码，已经是0/1）
+    # 4. 核心强特征保留
     core_features = ["原料是否匹配", "等级是否匹配"]
     for feat in core_features:
         if feat not in df.columns:
             raise ValueError(f"缺失核心特征：{feat}，请检查数据生成逻辑")
     
-    # 5. 分离特征和标签（训练阶段）
+    # 5. 分离特征和标签
     if is_train:
-        # 移除不需要的列
-        drop_cols = ["路线_适用原料类", "路线_适用等级", "匹配得分"]
+        # ✅ 关键修复：删除所有目标列
+        drop_cols = [
+            "路线_适用原料类", 
+            "路线_适用等级", 
+            "匹配得分",
+            "成本得分",
+            "技术得分",
+            "碳减排得分",
+            "市场得分"
+        ]
+        # 只保留不在 drop_cols 中的列作为特征
         feature_cols = [col for col in df.columns if col not in drop_cols]
         X = df[feature_cols]
-        y = df["匹配得分"]
+        y = df["匹配得分"]          # 注意：y 只取匹配得分，多目标单独处理
         return X, y, feature_cols
     else:
-        # 预测阶段，只返回特征
+        # 预测阶段：只删除路线描述列，不删除目标列（因为目标列根本不存在）
         drop_cols = ["路线_适用原料类", "路线_适用等级"]
         feature_cols = [col for col in df.columns if col not in drop_cols]
         return df[feature_cols]
