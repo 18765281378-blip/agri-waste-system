@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { font-family: 'Inter', system-ui, sans-serif; }
+    body { animation: fadeIn 0.4s ease; background: radial-gradient(circle at 10% 30%, rgba(46,125,50,0.03), rgba(255,255,255,0.9)); }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .glass-card { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3); }
+    .value-card { transition: all 0.2s; }
+    .value-card:hover { transform: translateY(-2px); }
+  </style>
+</head>
+<body class="min-h-screen">
+  <div class="max-w-6xl mx-auto px-4 py-6">
+    <header class="flex justify-between items-center mb-8">
+      <a href="/" class="flex items-center gap-1 text-slate-500 hover:text-emerald-600 text-sm">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回首页
+      </a>
+      <div class="flex gap-2">
+        <a href="/grading" class="text-sm text-slate-500 hover:text-emerald-600"><i data-lucide="image" class="inline w-4 h-4 mr-1"></i> 分级教学</a>
+        <a href="/recommend" class="text-sm text-slate-500 hover:text-emerald-600"><i data-lucide="sparkles" class="inline w-4 h-4 mr-1"></i> 智能推荐</a>
+        <a href="/batch-recommend" class="text-sm text-slate-500 hover:text-emerald-600"><i data-lucide="layers" class="inline w-4 h-4 mr-1"></i> 批量推荐</a>
+        <a href="/carbon-calculator" class="text-sm text-slate-500 hover:text-emerald-600"><i data-lucide="leaf" class="inline w-4 h-4 mr-1"></i> 碳足迹</a>
+      </div>
+    </header>
+
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+        <i data-lucide="diamond" class="w-8 h-8 text-emerald-600"></i>
+        副产物资源价值评估
+      </h1>
+      <p class="mt-2 text-slate-600">快速评估一批副产物的综合价值，辅助采购决策。填写基本信息，获得多维度评分和处置建议。</p>
+    </div>
+
+    <div class="grid gap-8 lg:grid-cols-2">
+      <!-- 左侧：表单 -->
+      <div class="glass-card rounded-2xl p-6">
+        <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><i data-lucide="sliders" class="w-5 h-5 text-emerald-600"></i> 原料信息</h2>
+        <div class="space-y-5">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">原料类型</label>
+            <select id="material" class="w-full rounded-xl border border-emerald-200 px-4 py-2 focus:ring-2 focus:ring-emerald-200">
+              <option>茶渣</option>
+              <option>果渣（柑橘/葡萄/猕猴桃等）</option>
+              <option>花生壳/板栗壳</option>
+              <option>豆制品/粮食发酵副产物</option>
+              <option>中药残余废弃物</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">产地范围</label>
+            <select id="origin" class="w-full rounded-xl border border-emerald-200 px-4 py-2">
+              <option>本地</option>
+              <option>省内</option>
+              <option>省外</option>
+              <option>进口</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">收集季节</label>
+            <select id="season" class="w-full rounded-xl border border-emerald-200 px-4 py-2">
+              <option>春季</option>
+              <option>夏季</option>
+              <option>秋季</option>
+              <option>冬季</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">含水量</label>
+            <select id="moisture" class="w-full rounded-xl border border-emerald-200 px-4 py-2">
+              <option>低</option>
+              <option>中</option>
+              <option>高</option>
+            </select>
+            <p class="text-xs text-slate-400 mt-1">低&lt;30% / 中30%~60% / 高&gt;60%</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">杂质率</label>
+            <select id="impurity" class="w-full rounded-xl border border-emerald-200 px-4 py-2">
+              <option>低</option>
+              <option>中</option>
+              <option>高</option>
+            </select>
+            <p class="text-xs text-slate-400 mt-1">低&lt;5% / 中5%~15% / 高&gt;15%</p>
+          </div>
+          <button id="valuateBtn" class="mt-4 w-full rounded-xl bg-emerald-600 py-3 text-white font-semibold shadow-md hover:bg-emerald-500 transition flex items-center justify-center gap-2">
+            <i data-lucide="bar-chart-3" class="w-4 h-4"></i> 开始评估
+          </button>
+        </div>
+      </div>
+
+      <!-- 右侧：结果展示 -->
+      <div class="space-y-6">
+        <div class="glass-card rounded-2xl p-6">
+          <h2 class="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2"><i data-lucide="chart-no-axes" class="w-5 h-5 text-emerald-600"></i> 综合价值雷达图</h2>
+          <canvas id="radarChart" height="250"></canvas>
+        </div>
+
+        <div class="glass-card rounded-2xl p-6">
+          <h2 class="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2"><i data-lucide="badge-check" class="w-5 h-5 text-emerald-600"></i> 评分卡</h2>
+          <div class="grid grid-cols-2 gap-3" id="scoreCards">
+            <div class="bg-white/60 rounded-xl p-3 text-center animate-pulse">加载中...</div>
+          </div>
+        </div>
+
+        <div class="glass-card rounded-2xl p-6">
+          <h2 class="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2"><i data-lucide="message-square" class="w-5 h-5 text-emerald-600"></i> 最佳处置建议</h2>
+          <div id="suggestionBox" class="p-4 bg-emerald-50/50 rounded-xl text-slate-700 text-sm leading-relaxed">
+            请填写左侧信息并点击“开始评估”。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    lucide.createIcons();
+    let radarChart = null;
+
+    document.getElementById('valuateBtn').addEventListener('click', async () => {
+      const payload = {
+        material: document.getElementById('material').value,
+        origin: document.getElementById('origin').value,
+        season: document.getElementById('season').value,
+        moisture: document.getElementById('moisture').value,
+        impurity: document.getElementById('impurity').value
+      };
+      try {
+        const res = await fetch('/api/valuate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        
+        // 更新雷达图
+        if (radarChart) radarChart.destroy();
+        const ctx = document.getElementById('radarChart').getContext('2d');
+        radarChart = new Chart(ctx, {
+          type: 'radar',
+          data: {
+            labels: data.labels,
+            datasets: [{
+              label: '价值评分',
+              data: data.radar_data,
+              backgroundColor: 'rgba(46, 125, 50, 0.2)',
+              borderColor: '#2e7d32',
+              borderWidth: 2,
+              pointBackgroundColor: '#2e7d32'
+            }]
+          },
+          options: {
+            scales: { r: { beginAtZero: true, max: 10, ticks: { stepSize: 2 } } },
+            responsive: true,
+            maintainAspectRatio: true
+          }
+        });
+
+        // 更新评分卡片
+        const scores = data.scores;
+        document.getElementById('scoreCards').innerHTML = `
+          <div class="bg-emerald-50 rounded-xl p-3 text-center value-card">
+            <div class="text-xs text-slate-500">经济价值</div>
+            <div class="text-2xl font-bold text-emerald-600">${scores.economic}</div>
+            <div class="text-xs">/10</div>
+          </div>
+          <div class="bg-emerald-50 rounded-xl p-3 text-center value-card">
+            <div class="text-xs text-slate-500">环保价值</div>
+            <div class="text-2xl font-bold text-emerald-600">${scores.environmental}</div>
+            <div class="text-xs">/10</div>
+          </div>
+          <div class="bg-emerald-50 rounded-xl p-3 text-center value-card">
+            <div class="text-xs text-slate-500">能源价值</div>
+            <div class="text-2xl font-bold text-emerald-600">${scores.energy}</div>
+            <div class="text-xs">/10</div>
+          </div>
+          <div class="bg-emerald-50 rounded-xl p-3 text-center value-card">
+            <div class="text-xs text-slate-500">技术可行性</div>
+            <div class="text-2xl font-bold text-emerald-600">${scores.feasibility}</div>
+            <div class="text-xs">/10</div>
+          </div>
+        `;
+
+        // 更新建议
+        document.getElementById('suggestionBox').innerHTML = `<div class="flex gap-2"><i data-lucide="lightbulb" class="w-5 h-5 text-emerald-600 shrink-0"></i><span>${data.suggestion}</span></div>`;
+        lucide.createIcons();
+      } catch (err) {
+        alert('评估失败：' + err.message);
+      }
+    });
+  </script>
+</body>
+</html>

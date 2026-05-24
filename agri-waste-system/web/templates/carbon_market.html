@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ title }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { font-family: 'Inter', system-ui, sans-serif; }
+        body { animation: fadeIn 0.4s ease; background: radial-gradient(circle at 10% 30%, rgba(46,125,50,0.03), rgba(255,255,255,0.9)); }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .glass-card { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3); }
+    </style>
+</head>
+<body class="min-h-screen">
+<div class="max-w-6xl mx-auto px-4 py-6">
+    <header class="flex justify-between items-center mb-8">
+        <a href="/" class="flex items-center gap-1 text-slate-500 hover:text-emerald-600 text-sm">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回首页
+        </a>
+        <div class="flex gap-2">
+            <a href="/grading" class="text-sm text-slate-500 hover:text-emerald-600">分级教学</a>
+            <a href="/recommend" class="text-sm text-slate-500 hover:text-emerald-600">智能推荐</a>
+            <a href="/batch-recommend" class="text-sm text-slate-500 hover:text-emerald-600">批量推荐</a>
+            <a href="/carbon-calculator" class="text-sm text-slate-500 hover:text-emerald-600">碳足迹</a>
+            <a href="/resource-valuation" class="text-sm text-slate-500 hover:text-emerald-600">价值评估</a>
+        </div>
+    </header>
+
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            <i data-lucide="coins" class="w-8 h-8 text-emerald-600"></i>
+            碳积分模拟交易市场
+        </h1>
+        <p class="mt-2 text-slate-600">通过碳足迹计算获得碳积分，在市场中买卖，体验碳交易机制。</p>
+    </div>
+
+    <!-- 用户信息栏 -->
+    <div class="glass-card rounded-2xl p-4 mb-6 flex justify-between items-center">
+        <div class="flex items-center gap-2">
+            <i data-lucide="user" class="w-5 h-5 text-emerald-600"></i>
+            <span class="font-medium">用户 ID：</span>
+            <input type="text" id="userId" value="demo_user" class="border border-emerald-200 rounded-lg px-2 py-1 text-sm">
+            <button id="setUserBtn" class="bg-emerald-100 px-3 py-1 rounded-lg text-xs hover:bg-emerald-200">切换</button>
+        </div>
+        <div>
+            <span class="text-sm text-slate-500">碳积分余额：</span>
+            <span id="balance" class="text-2xl font-bold text-emerald-600">0</span>
+            <span class="text-sm"> kg CO₂e</span>
+        </div>
+    </div>
+
+    <div class="grid gap-8 lg:grid-cols-2">
+        <!-- 左侧：K线图和市场深度 -->
+        <div class="space-y-6">
+            <div class="glass-card rounded-2xl p-6">
+                <h2 class="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
+                    <i data-lucide="trending-up" class="w-5 h-5 text-emerald-600"></i> 碳价走势
+                </h2>
+                <canvas id="klineChart" height="250"></canvas>
+            </div>
+            <div class="glass-card rounded-2xl p-6">
+                <h2 class="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
+                    <i data-lucide="book-open" class="w-5 h-5 text-emerald-600"></i> 市场深度
+                </h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <h3 class="font-semibold text-emerald-700">买单 (出价)</h3>
+                        <div id="buyDepth" class="text-sm space-y-1 max-h-48 overflow-y-auto"></div>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-rose-700">卖单 (要价)</h3>
+                        <div id="sellDepth" class="text-sm space-y-1 max-h-48 overflow-y-auto"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧：交易表单和订单列表 -->
+        <div class="space-y-6">
+            <div class="glass-card rounded-2xl p-6">
+                <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <i data-lucide="git-branch" class="w-5 h-5 text-emerald-600"></i> 挂单交易
+                </h2>
+                <div class="space-y-4">
+                    <div class="flex gap-4">
+                        <div class="flex-1">
+                            <label class="text-xs text-slate-600">类型</label>
+                            <select id="orderType" class="w-full rounded-lg border border-emerald-200 p-2">
+                                <option value="buy">买入</option>
+                                <option value="sell">卖出</option>
+                            </select>
+                        </div>
+                        <div class="flex-1">
+                            <label class="text-xs text-slate-600">价格 (积分/吨)</label>
+                            <input type="number" id="price" step="0.1" class="w-full rounded-lg border border-emerald-200 p-2">
+                        </div>
+                        <div class="flex-1">
+                            <label class="text-xs text-slate-600">数量 (吨 CO₂e)</label>
+                            <input type="number" id="quantity" step="1" class="w-full rounded-lg border border-emerald-200 p-2">
+                        </div>
+                    </div>
+                    <button id="placeOrderBtn" class="w-full bg-emerald-600 text-white py-2 rounded-xl hover:bg-emerald-500 transition flex items-center justify-center gap-2">
+                        <i data-lucide="send" class="w-4 h-4"></i> 提交挂单
+                    </button>
+                </div>
+            </div>
+
+            <div class="glass-card rounded-2xl p-6">
+                <h2 class="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
+                    <i data-lucide="list" class="w-5 h-5 text-emerald-600"></i> 我的活跃订单
+                </h2>
+                <div id="myOrders" class="text-sm space-y-2 max-h-64 overflow-y-auto">
+                    <div class="text-slate-400">暂无订单</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    lucide.createIcons();
+    let currentUserId = "demo_user";
+    let klineChart = null;
+
+    // 获取余额和K线数据
+    async function refreshBalance() {
+        const res = await fetch(`/api/carbon-market/balance/${currentUserId}`);
+        const data = await res.json();
+        document.getElementById('balance').innerText = data.balance.toFixed(2);
+    }
+
+    async function loadKline() {
+        const res = await fetch('/api/carbon-market/market/kline?days=30');
+        const data = await res.json();
+        const labels = data.data.map(d => d.date);
+        const closes = data.data.map(d => d.close);
+        if (klineChart) klineChart.destroy();
+        const ctx = document.getElementById('klineChart').getContext('2d');
+        klineChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: '碳价 (积分/吨)',
+                    data: closes,
+                    borderColor: '#2e7d32',
+                    backgroundColor: 'rgba(46,125,50,0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: true }
+        });
+    }
+
+    async function loadOrderbook() {
+        const res = await fetch('/api/carbon-market/market/orderbook');
+        const data = await res.json();
+        const buyDiv = document.getElementById('buyDepth');
+        const sellDiv = document.getElementById('sellDepth');
+        buyDiv.innerHTML = data.buys.map(b => `<div class="flex justify-between"><span>${b.price.toFixed(2)}</span><span>${b.quantity.toFixed(2)} 吨</span></div>`).join('') || '<div class="text-slate-400">暂无买单</div>';
+        sellDiv.innerHTML = data.sells.map(s => `<div class="flex justify-between"><span>${s.price.toFixed(2)}</span><span>${s.quantity.toFixed(2)} 吨</span></div>`).join('') || '<div class="text-slate-400">暂无卖单</div>';
+    }
+
+    async function loadMyOrders() {
+        const res = await fetch(`/api/carbon-market/orders/${currentUserId}`);
+        const data = await res.json();
+        const ordersDiv = document.getElementById('myOrders');
+        if (data.orders.length === 0) {
+            ordersDiv.innerHTML = '<div class="text-slate-400">暂无订单</div>';
+            return;
+        }
+        ordersDiv.innerHTML = data.orders.map(o => `
+            <div class="bg-white/50 p-2 rounded-lg flex justify-between items-center">
+                <div>
+                    <span class="font-medium">${o.type === 'buy' ? '买入' : '卖出'}</span>
+                    <span class="ml-2">${o.price} 积分/吨</span>
+                    <span class="ml-2">${o.remaining} / ${o.quantity} 吨</span>
+                </div>
+                <span class="text-xs text-slate-400">${new Date(o.created_at).toLocaleString()}</span>
+            </div>
+        `).join('');
+    }
+
+    async function placeOrder() {
+        const type = document.getElementById('orderType').value;
+        const price = parseFloat(document.getElementById('price').value);
+        const quantity = parseFloat(document.getElementById('quantity').value);
+        if (isNaN(price) || isNaN(quantity) || price <= 0 || quantity <= 0) {
+            alert("请输入有效的价格和数量");
+            return;
+        }
+        const res = await fetch('/api/carbon-market/order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: currentUserId, type, price, quantity })
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            alert(err.detail || "挂单失败");
+            return;
+        }
+        const result = await res.json();
+        alert(`挂单成功，订单号：${result.order_id}`);
+        refreshBalance();
+        loadMyOrders();
+        loadOrderbook();
+    }
+
+    // 初始化
+    document.getElementById('setUserBtn').addEventListener('click', () => {
+        currentUserId = document.getElementById('userId').value.trim() || "demo_user";
+        refreshBalance();
+        loadMyOrders();
+        loadOrderbook();
+    });
+    document.getElementById('placeOrderBtn').addEventListener('click', placeOrder);
+
+    refreshBalance();
+    loadKline();
+    loadOrderbook();
+    loadMyOrders();
+
+    // 每10秒刷新一次订单簿和余额
+    setInterval(() => {
+        refreshBalance();
+        loadOrderbook();
+        loadMyOrders();
+    }, 10000);
+</script>
+</body>
+</html>

@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    * { font-family: 'Inter', system-ui, sans-serif; }
+    body { animation: fadeIn 0.4s ease; background: radial-gradient(circle at 10% 30%, rgba(46,125,50,0.03), rgba(255,255,255,0.9)); }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .card-hover { transition: all 0.2s ease; }
+    .card-hover:hover { transform: translateY(-3px); box-shadow: 0 25px 30px -12px rgba(0, 0, 0, 0.15); }
+    .custom-select, .custom-input { transition: all 0.2s; }
+    .custom-select:focus, .custom-input:focus { box-shadow: 0 0 0 3px rgba(46,125,50,0.2); outline: none; }
+    .skeleton { background: linear-gradient(110deg, #ececec 8%, #f5f5f5 18%, #ececec 33%); background-size: 200% 100%; animation: 1.5s shine linear infinite; }
+    @keyframes shine { to { background-position-x: -200%; } }
+    .step-indicator { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2rem; }
+    .step { flex: 1; text-align: center; position: relative; }
+    .step .circle { width: 2.5rem; height: 2.5rem; background: #e2e8f0; border-radius: 9999px; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem; font-weight: 600; color: #475569; transition: all 0.2s; }
+    .step.active .circle { background: #2e7d32; color: white; box-shadow: 0 4px 6px -1px rgba(46,125,50,0.3); }
+    .step.completed .circle { background: #4caf50; color: white; }
+    .step .label { font-size: 0.75rem; font-weight: 500; color: #64748b; }
+    .step.active .label { color: #2e7d32; font-weight: 600; }
+    .step-content { display: none; animation: fadeIn 0.3s; }
+    .step-content.active { display: block; }
+    .material-card { border: 2px solid transparent; transition: all 0.2s; cursor: pointer; }
+    .material-card.selected { border-color: #2e7d32; background-color: #f0fdf4; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .quality-option { cursor: pointer; transition: all 0.2s; }
+    .quality-option.selected { background-color: #e0f2e0; border-color: #2e7d32; color: #1e4620; }
+    .star { color: #fbbf24; }
+    .modal-overlay { transition: opacity 0.2s ease; }
+    .modal-container { transition: transform 0.2s ease, opacity 0.2s ease; }
+    .contrib-bar { transition: width 0.3s ease; }
+    .pdf-report { font-family: 'Inter', system-ui, sans-serif; max-width: 800px; margin: 0 auto; background: white; padding: 24px; border-radius: 16px; }
+    .pdf-card { border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px; margin-bottom: 20px; background: white; }
+  </style>
+</head>
+<body class="min-h-screen">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <header class="flex justify-between items-center mb-8">
+    <a href="/" class="flex items-center gap-1 text-slate-500 hover:text-emerald-600 text-sm"><i data-lucide="arrow-left" class="w-4 h-4"></i> 首页</a>
+    <div class="flex gap-2">
+      <a href="/grading" class="text-sm text-slate-500 hover:text-emerald-600"><i data-lucide="image" class="inline w-4 h-4 mr-1"></i> 分级教学</a>
+    </div>
+  </header>
+
+  <!-- 步骤指示器 -->
+  <div class="step-indicator">
+    <div class="step active" data-step="1"><div class="circle">1</div><div class="label">原料类型</div></div>
+    <div class="step" data-step="2"><div class="circle">2</div><div class="label">质量指标</div></div>
+    <div class="step" data-step="3"><div class="circle">3</div><div class="label">专属问题 & 提交</div></div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <!-- 左侧表单 -->
+    <div class="lg:col-span-1 bg-white/70 backdrop-blur-sm rounded-2xl p-6 ring-1 ring-white/50 shadow-sm">
+      <div id="stepHelp" class="bg-emerald-50/80 rounded-xl p-3 mb-5 text-xs text-slate-700 border-l-4 border-emerald-400">
+        💡 请选择您的副产物类型，系统将为您匹配最佳处置路线。
+      </div>
+      <div id="dynamicWarning" class="hidden mb-4 rounded-xl bg-amber-50 border-l-4 border-amber-400 p-3 text-xs text-amber-700"></div>
+
+      <div id="step1" class="step-content active">
+        <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2 mb-2"><i data-lucide="package" class="w-5 h-5 text-emerald-600"></i> 原料类型</h2>
+        <p class="text-sm text-slate-500 mb-4">点击下方卡片选择主要加工副产物</p>
+        <div class="grid grid-cols-2 gap-3" id="materialCards"></div>
+        <input type="hidden" id="material" value="茶渣">
+      </div>
+      <div id="step2" class="step-content">
+        <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2 mb-2"><i data-lucide="gauge" class="w-5 h-5 text-emerald-600"></i> 质量指标</h2>
+        <p class="text-sm text-slate-500 mb-4">评估原料状态，影响路线推荐与风险</p>
+        <div class="space-y-5">
+          <div><div class="flex justify-between items-center mb-1"><label class="text-sm font-medium text-slate-700">霉变情况</label><span id="moldHint" class="text-xs text-slate-400"></span></div><div class="flex gap-3" id="moldOptions"></div><input type="hidden" id="mold" value="无"></div>
+          <div><div class="flex justify-between items-center mb-1"><label class="text-sm font-medium text-slate-700">来源情况</label></div><div class="flex gap-3" id="sourceOptions"></div><input type="hidden" id="source" value="明确可追溯"></div>
+          <div><label class="text-sm font-medium text-slate-700 block mb-1">预估等级</label><div class="flex items-center gap-2" id="gradeStars"></div><input type="hidden" id="grade" value="优"><p class="text-[11px] text-slate-400 mt-2">⚠️ 模型训练集含优/良/差，“中”会临时映射为“良”。</p></div>
+        </div>
+      </div>
+      <div id="step3" class="step-content">
+        <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2 mb-2"><i data-lucide="clipboard-list" class="w-5 h-5 text-emerald-600"></i> 专属补充信息</h2>
+        <p class="text-sm text-slate-500 mb-4">根据原料类型，补充关键特性</p>
+        <div id="extra" class="space-y-4 mb-6"></div>
+        <!-- 新增：预计吨数输入框 -->
+        <div class="mb-6">
+          <label class="text-sm font-medium text-slate-700 block mb-1">预计吨数（吨）</label>
+          <input type="number" id="tonnage" value="100" step="10" class="custom-input w-full rounded-xl bg-white ring-1 ring-emerald-100 px-4 py-2">
+          <p class="text-[11px] text-slate-400 mt-1">用于合同生成及产能分配</p>
+        </div>
+        <button id="submitBtn" class="group w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3 text-white font-semibold shadow-md hover:bg-emerald-500 transition-all"><i data-lucide="wand-2" class="w-4 h-4 group-hover:rotate-12 transition"></i> 生成推荐方案</button>
+      </div>
+      <div class="flex justify-between mt-8 pt-4 border-t border-emerald-100">
+        <button id="prevBtn" class="px-4 py-2 rounded-xl bg-white ring-1 ring-emerald-200 text-emerald-700 text-sm font-medium hover:bg-emerald-50 transition disabled:opacity-40 disabled:cursor-not-allowed" disabled>← 上一步</button>
+        <button id="nextBtn" class="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-medium shadow-sm hover:bg-emerald-500 transition">下一步 →</button>
+      </div>
+      <div id="error" class="mt-5 hidden text-rose-600 text-sm bg-rose-50 rounded-xl p-3"></div>
+    </div>
+
+    <!-- 右侧结果区域 -->
+    <div class="lg:col-span-2">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2"><i data-lucide="trophy" class="w-5 h-5 text-emerald-600"></i> 推荐结果 Top3</h2>
+        <div class="flex gap-2">
+          <button id="compareBtn" class="text-sm bg-white/80 rounded-xl px-3 py-1.5 ring-1 ring-emerald-200 hover:bg-emerald-50 transition flex items-center gap-1"><i data-lucide="git-compare" class="w-4 h-4"></i> 对比历史</button>
+          <button id="exportPdfBtn" class="text-sm bg-white/80 rounded-xl px-3 py-1.5 ring-1 ring-emerald-200 hover:bg-emerald-50 transition flex items-center gap-1"><i data-lucide="file-text" class="w-4 h-4"></i> 导出 PDF</button>
+          <button id="exportReportBtn" class="text-sm bg-white/80 rounded-xl px-3 py-1.5 ring-1 ring-emerald-200 hover:bg-emerald-50 transition flex items-center gap-1"><i data-lucide="copy" class="w-4 h-4"></i> 复制报告</button>
+          <button id="exportBtn" class="hidden text-sm bg-white/80 rounded-xl px-3 py-1.5 ring-1 ring-emerald-200 hover:bg-emerald-50 transition flex items-center gap-1"><i data-lucide="download" class="w-4 h-4"></i> 导出 JSON</button>
+        </div>
+      </div>
+
+      <!-- 权重滑块区域 -->
+      <div class="bg-white/60 backdrop-blur-sm rounded-xl p-4 mb-5 ring-1 ring-white/50">
+        <div class="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2"><i data-lucide="sliders" class="w-4 h-4 text-emerald-600"></i> 自定义权重（滑动调整偏好，后端自动归一化）</div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div><label class="text-xs text-slate-600">💰 成本权重</label><input type="range" id="w_cost" min="0" max="1" step="0.05" value="0.25" class="w-full"><span id="w_cost_val" class="text-xs text-slate-500 ml-1">0.25</span></div>
+          <div><label class="text-xs text-slate-600">⚙️ 技术权重</label><input type="range" id="w_tech" min="0" max="1" step="0.05" value="0.25" class="w-full"><span id="w_tech_val" class="text-xs text-slate-500 ml-1">0.25</span></div>
+          <div><label class="text-xs text-slate-600">🌿 碳减排权重</label><input type="range" id="w_carbon" min="0" max="1" step="0.05" value="0.25" class="w-full"><span id="w_carbon_val" class="text-xs text-slate-500 ml-1">0.25</span></div>
+          <div><label class="text-xs text-slate-600">📈 市场权重</label><input type="range" id="w_market" min="0" max="1" step="0.05" value="0.25" class="w-full"><span id="w_market_val" class="text-xs text-slate-500 ml-1">0.25</span></div>
+        </div>
+        <button id="resetWeightsBtn" class="text-xs text-emerald-600 mt-2 underline">重置等权重</button>
+      </div>
+
+      <div id="cards" class="space-y-5">
+        <!-- 骨架屏占位 -->
+        <div class="rounded-2xl bg-white/80 p-5 ring-1 ring-emerald-100/50 transition-all"><div class="flex items-center gap-3 mb-3"><div class="w-10 h-10 rounded-full bg-emerald-100 animate-pulse"></div><div class="flex-1"><div class="h-5 bg-emerald-100 rounded w-3/4 animate-pulse"></div><div class="h-3 bg-emerald-50 rounded w-1/2 mt-1 animate-pulse"></div></div><div class="w-12 h-12 bg-emerald-100 rounded-full animate-pulse"></div></div><div class="grid md:grid-cols-2 gap-3 mt-3"><div class="h-16 bg-emerald-50 rounded-xl animate-pulse"></div><div class="h-16 bg-emerald-50 rounded-xl animate-pulse"></div></div></div>
+        <div class="rounded-2xl bg-white/80 p-5 ring-1 ring-emerald-100/50"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-emerald-100 animate-pulse"></div><div class="flex-1"><div class="h-5 bg-emerald-100 rounded w-2/3 animate-pulse"></div></div><div class="w-12 h-12 bg-emerald-100 rounded-full animate-pulse"></div></div><div class="mt-3 h-12 bg-emerald-50 rounded-xl animate-pulse"></div></div>
+        <div class="rounded-2xl bg-white/80 p-5 ring-1 ring-emerald-100/50"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-emerald-100 animate-pulse"></div><div class="flex-1"><div class="h-5 bg-emerald-100 rounded w-1/2 animate-pulse"></div></div><div class="w-12 h-12 bg-emerald-100 rounded-full animate-pulse"></div></div></div>
+        <div class="text-center text-xs text-slate-400 mt-2">✨ 填写左侧表单后，这里将展示智能推荐结果</div>
+      </div>
+      <div id="skeletonLoader" class="hidden space-y-5"><div class="skeleton h-40 rounded-2xl"></div><div class="skeleton h-40 rounded-2xl"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 对比历史模态框 -->
+<div id="compareModal" class="fixed inset-0 z-50 hidden overflow-y-auto modal-overlay">
+  <div class="flex items-end justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+    <div class="fixed inset-0 bg-gray-500/75 transition-opacity" aria-hidden="true"></div>
+    <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+    <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full modal-container">
+      <div class="bg-white px-6 pt-5 pb-4">
+        <div class="flex justify-between items-center border-b pb-3">
+          <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2"><i data-lucide="git-compare" class="w-5 h-5 text-emerald-600"></i> 推荐结果对比</h3>
+          <button id="closeModalBtn" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <div id="compareContent" class="mt-4 max-h-[70vh] overflow-y-auto"><div class="text-center text-slate-500 py-8">加载中...</div></div>
+      </div>
+      <div class="bg-gray-50 px-6 py-3 flex justify-end">
+        <button id="closeModalFooterBtn" class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 深度解释模态框 -->
+<div id="deepModal" class="fixed inset-0 z-50 hidden overflow-y-auto modal-overlay">
+  <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+    <div class="fixed inset-0 bg-gray-500/75 transition-opacity" aria-hidden="true"></div>
+    <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+    <div class="inline-block align-bottom bg-white rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-2xl sm:w-full modal-container">
+      <div class="bg-white px-6 pt-5 pb-4">
+        <div class="flex justify-between items-center border-b pb-3">
+          <h3 id="deepModalTitle" class="text-lg font-bold text-slate-900 flex items-center gap-2"><i data-lucide="info" class="w-5 h-5 text-emerald-600"></i> 深度解释</h3>
+          <button id="closeDeepModalBtn" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <div id="deepContent" class="mt-4 max-h-[70vh] overflow-y-auto space-y-5"></div>
+      </div>
+      <div class="bg-gray-50 px-6 py-3 flex justify-end">
+        <button id="closeDeepModalFooterBtn" class="rounded-lg bg-white px-4 py-2 text-sm font-medium text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 数据定义
+  const materialList = ["茶渣", "果渣（柑橘/葡萄/猕猴桃等）", "花生壳/板栗壳", "豆制品/粮食发酵副产物", "中药残余废弃物"];
+  const materialIcons = { "茶渣":"coffee", "果渣（柑橘/葡萄/猕猴桃等）":"apple", "花生壳/板栗壳":"bean", "豆制品/粮食发酵副产物":"cup-soda", "中药残余废弃物":"flask-conical" };
+  const moldOptionsList = ["无", "轻度", "严重"];
+  const sourceOptionsList = ["明确可追溯", "基本可追溯", "来源不明"];
+  const gradeList = ["优", "良", "中", "差"];
+
+  // DOM 元素
+  const step1Div = document.getElementById('step1');
+  const step2Div = document.getElementById('step2');
+  const step3Div = document.getElementById('step3');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const submitBtn = document.getElementById('submitBtn');
+  const materialInput = document.getElementById('material');
+  const moldInput = document.getElementById('mold');
+  const sourceInput = document.getElementById('source');
+  const gradeInput = document.getElementById('grade');
+  const extraEl = document.getElementById('extra');
+  const cardsEl = document.getElementById('cards');
+  const errorEl = document.getElementById('error');
+  const exportBtn = document.getElementById('exportBtn');
+  const exportReportBtn = document.getElementById('exportReportBtn');
+  const exportPdfBtn = document.getElementById('exportPdfBtn');
+  const compareBtn = document.getElementById('compareBtn');
+  const skeletonLoader = document.getElementById('skeletonLoader');
+  const stepHelp = document.getElementById('stepHelp');
+  const compareModal = document.getElementById('compareModal');
+  const compareContent = document.getElementById('compareContent');
+  const deepModal = document.getElementById('deepModal');
+  const deepContent = document.getElementById('deepContent');
+  const deepModalTitle = document.getElementById('deepModalTitle');
+  const dynamicWarning = document.getElementById('dynamicWarning');
+  const tonnageInput = document.getElementById('tonnage');   // 新增吨数输入框
+  let currentStep = 1;
+  let lastPayload = null;
+
+  // 权重滑块元素
+  const wCost = document.getElementById('w_cost');
+  const wTech = document.getElementById('w_tech');
+  const wCarbon = document.getElementById('w_carbon');
+  const wMarket = document.getElementById('w_market');
+  const wCostVal = document.getElementById('w_cost_val');
+  const wTechVal = document.getElementById('w_tech_val');
+  const wCarbonVal = document.getElementById('w_carbon_val');
+  const wMarketVal = document.getElementById('w_market_val');
+  const resetWeightsBtn = document.getElementById('resetWeightsBtn');
+
+  function updateWeightDisplays() {
+    wCostVal.innerText = parseFloat(wCost.value).toFixed(2);
+    wTechVal.innerText = parseFloat(wTech.value).toFixed(2);
+    wCarbonVal.innerText = parseFloat(wCarbon.value).toFixed(2);
+    wMarketVal.innerText = parseFloat(wMarket.value).toFixed(2);
+  }
+  wCost.addEventListener('input', updateWeightDisplays);
+  wTech.addEventListener('input', updateWeightDisplays);
+  wCarbon.addEventListener('input', updateWeightDisplays);
+  wMarket.addEventListener('input', updateWeightDisplays);
+  resetWeightsBtn.addEventListener('click', () => {
+    wCost.value = '0.25';
+    wTech.value = '0.25';
+    wCarbon.value = '0.25';
+    wMarket.value = '0.25';
+    updateWeightDisplays();
+    if (lastPayload) autoResubmit();
+  });
+
+  async function autoResubmit() {
+    if (cardsEl.innerHTML.includes("正在生成推荐")) return;
+    await submitRecommendation(true);
+  }
+  [wCost, wTech, wCarbon, wMarket].forEach(slider => {
+    slider.addEventListener('change', () => {
+      if (lastPayload) autoResubmit();
+    });
+  });
+
+  const helpTexts = { 1: "💡 请选择您的副产物类型，系统将为您匹配最佳处置路线。", 2: "🔍 霉变严重会禁用食品支线；来源不明将禁止精细提取；等级“差”会过滤高要求路线。", 3: "📝 补充专属特性，让推荐更精准。" };
+  function updateHelp(step) { stepHelp.innerHTML = helpTexts[step] || helpTexts[1]; }
+
+  function updateDynamicWarning() {
+    const mold = moldInput.value;
+    const grade = gradeInput.value;
+    const warnings = [];
+    if (mold === "严重") warnings.push("⚠️ 严重霉变将禁用所有食品支线路线。");
+    if (grade === "差") warnings.push("⚠️ 等级“差”将自动过滤仅限优/良的高要求路线。");
+    if (warnings.length === 0) {
+      dynamicWarning.classList.add("hidden");
+      dynamicWarning.innerHTML = "";
+    } else {
+      dynamicWarning.classList.remove("hidden");
+      dynamicWarning.innerHTML = warnings.join("<br>");
+    }
+  }
+
+  function renderMaterialCards() {
+    const container = document.getElementById('materialCards');
+    const selected = materialInput.value;
+    container.innerHTML = materialList.map(mat => `<div class="material-card rounded-xl bg-white p-3 ring-1 ring-emerald-100 text-center cursor-pointer hover:shadow-md transition-all ${selected === mat ? 'selected' : ''}" data-material="${mat}"><i data-lucide="${materialIcons[mat] || 'box'}" class="w-6 h-6 mx-auto text-emerald-600 mb-1"></i><div class="text-sm font-medium">${mat}</div></div>`).join('');
+    lucide.createIcons();
+    document.querySelectorAll('.material-card').forEach(card => {
+      card.addEventListener('click', () => {
+        materialInput.value = card.dataset.material;
+        renderMaterialCards();
+        if (currentStep === 3) renderExtra();
+      });
+    });
+  }
+
+  function renderMoldOptions() {
+    const container = document.getElementById('moldOptions');
+    const selected = moldInput.value;
+    container.innerHTML = moldOptionsList.map(opt => `<button type="button" class="quality-option flex-1 py-2 rounded-xl text-sm font-medium ${selected === opt ? 'selected bg-emerald-100 ring-1 ring-emerald-400' : 'bg-white ring-1 ring-emerald-100'}" data-mold="${opt}">${opt}</button>`).join('');
+    container.querySelectorAll('.quality-option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        moldInput.value = btn.dataset.mold;
+        renderMoldOptions();
+        const hint = moldInput.value === '严重' ? '⚠️ 严重霉变将禁用食品支线路线' : (moldInput.value === '轻度' ? '轻度霉变可能影响部分提取路线' : '无霉变，可进入食品/提取路线');
+        document.getElementById('moldHint').innerHTML = hint;
+        updateDynamicWarning();
+      });
+    });
+    document.getElementById('moldHint').innerHTML = moldInput.value === '严重' ? '⚠️ 严重霉变将禁用食品支线路线' : '';
+    updateDynamicWarning();
+  }
+
+  function renderSourceOptions() {
+    const container = document.getElementById('sourceOptions');
+    const selected = sourceInput.value;
+    container.innerHTML = sourceOptionsList.map(opt => `<button type="button" class="quality-option flex-1 py-2 rounded-xl text-sm font-medium ${selected === opt ? 'selected bg-emerald-100 ring-1 ring-emerald-400' : 'bg-white ring-1 ring-emerald-100'}" data-source="${opt}">${opt}</button>`).join('');
+    container.querySelectorAll('.quality-option').forEach(btn => btn.addEventListener('click', () => { sourceInput.value = btn.dataset.source; renderSourceOptions(); }));
+  }
+
+  function renderGradeStars() {
+    const container = document.getElementById('gradeStars');
+    const selected = gradeInput.value;
+    const starsHtml = gradeList.map(grade => {
+      let starIcon = grade === '优' ? '★★★★★' : (grade === '良' ? '★★★★☆' : (grade === '中' ? '★★★☆☆' : '★☆☆☆☆'));
+      return `<button type="button" class="grade-star px-3 py-1 rounded-full text-sm ${selected === grade ? 'bg-emerald-100 ring-1 ring-emerald-400' : 'bg-white ring-1 ring-emerald-100'}" data-grade="${grade}"><span class="star">${starIcon}</span> ${grade}</button>`;
+    }).join('');
+    container.innerHTML = starsHtml;
+    container.querySelectorAll('.grade-star').forEach(btn => btn.addEventListener('click', () => { gradeInput.value = btn.dataset.grade; renderGradeStars(); updateDynamicWarning(); }));
+    updateDynamicWarning();
+  }
+
+  function renderExtra() {
+    const material = materialInput.value;
+    extraEl.innerHTML = "";
+    if (material === "茶渣") {
+      extraEl.innerHTML = `<div class="grid grid-cols-2 gap-3">
+        <div><label class="text-sm">含调味</label><select id="flavor" class="custom-select w-full rounded-xl bg-white ring-1 ring-emerald-100 px-3 py-2"><option>否</option><option>是</option></select></div>
+        <div><label class="text-sm">储存>3天</label><select id="storage" class="custom-select w-full rounded-xl bg-white ring-1 ring-emerald-100 px-3 py-2"><option>否</option><option>是</option></select></div>
+      </div>`;
+    } else if (material === "果渣（柑橘/葡萄/猕猴桃等）") {
+      extraEl.innerHTML = `<div><label class="text-sm">明显褐变</label><select id="browning" class="custom-select w-full rounded-xl bg-white ring-1 ring-emerald-100 px-3 py-2"><option>否</option><option>是</option></select></div>`;
+    } else if (material === "花生壳/板栗壳") {
+      extraEl.innerHTML = `<div><label class="text-sm">是否混入大量泥沙？</label><select id="sand" class="custom-select w-full rounded-xl bg-white ring-1 ring-emerald-100 px-3 py-2"><option>否</option><option>是</option></select></div>`;
+    } else if (material === "豆制品/粮食发酵副产物") {
+      extraEl.innerHTML = `<div><label class="text-sm">含水率是否很高（呈液态/半固态）？</label><select id="moisture" class="custom-select w-full rounded-xl bg-white ring-1 ring-emerald-100 px-3 py-2"><option>否</option><option>是</option></select></div>`;
+    } else if (material === "中药残余废弃物") {
+      extraEl.innerHTML = `<div><label class="text-sm">药材类型是否明确（如五指毛桃、布惊根等）？</label><select id="herbClarity" class="custom-select w-full rounded-xl bg-white ring-1 ring-emerald-100 px-3 py-2"><option>是</option><option>否</option></select></div>`;
+    }
+  }
+
+  function updateStepIndicator() {
+    document.querySelectorAll('.step').forEach((step, idx) => {
+      const stepNum = idx+1;
+      if (stepNum === currentStep) { step.classList.add('active'); step.classList.remove('completed'); }
+      else if (stepNum < currentStep) { step.classList.add('completed'); step.classList.remove('active'); }
+      else { step.classList.remove('active', 'completed'); }
+    });
+    step1Div.classList.toggle('active', currentStep === 1);
+    step2Div.classList.toggle('active', currentStep === 2);
+    step3Div.classList.toggle('active', currentStep === 3);
+    prevBtn.disabled = currentStep === 1;
+    if (currentStep === 3) { nextBtn.classList.add('hidden'); submitBtn.classList.remove('hidden'); }
+    else { nextBtn.classList.remove('hidden'); submitBtn.classList.add('hidden'); }
+    updateHelp(currentStep);
+    if (currentStep === 3) renderExtra();
+  }
+  function nextStep() { if (currentStep < 3) { currentStep++; updateStepIndicator(); } }
+  function prevStep() { if (currentStep > 1) { currentStep--; updateStepIndicator(); } }
+
+  function saveToHistory(user_profile, recommendations) {
+    const historyKey = 'recommend_history';
+    let history = JSON.parse(localStorage.getItem(historyKey) || '[]');
+    const newEntry = { timestamp: Date.now(), user_profile: { ...user_profile }, recommendations: recommendations.map(r => ({ 路线名称: r["路线名称"], 匹配得分: r["匹配得分"], 推荐强度: r["推荐强度"], 风险等级: r["风险等级"], 核心匹配: `${r.explanation?.core_reasons?.join(', ') || ''}` })) };
+    const isDuplicate = history.some(entry => entry.user_profile.原料类型 === user_profile.原料类型 && entry.user_profile.霉变情况 === user_profile.霉变情况 && entry.user_profile.来源情况 === user_profile.来源情况 && entry.user_profile.预估等级 === user_profile.预估等级);
+    if (!isDuplicate) { history.unshift(newEntry); if (history.length > 3) history.pop(); localStorage.setItem(historyKey, JSON.stringify(history)); }
+  }
+
+  function showCompareModal() {
+    const history = JSON.parse(localStorage.getItem('recommend_history') || '[]');
+    if (history.length < 2) { compareContent.innerHTML = `<div class="text-center text-slate-500 py-8">⚠️ 至少需要两次推荐记录才能对比。请先进行两次不同的推荐。</div>`; compareModal.classList.remove('hidden'); return; }
+    const [latest, previous] = history.slice(0,2);
+    const renderCompareTable = (recsA, recsB, labelA, labelB) => {
+      const maxRows = Math.max(recsA.length, recsB.length);
+      let html = `<div class="overflow-x-auto"><table class="min-w-full border-collapse"><thead><tr class="bg-emerald-50"><th class="px-4 py-2 text-left text-sm font-semibold text-slate-700">对比项</th><th class="px-4 py-2 text-left text-sm font-semibold text-emerald-800">${labelA}</th><th class="px-4 py-2 text-left text-sm font-semibold text-emerald-800">${labelB}</th></tr></thead><tbody>`;
+      for (let i = 0; i < maxRows; i++) {
+        const a = recsA[i] || {};
+        const b = recsB[i] || {};
+        html += `<tr class="border-b border-emerald-100"><td class="px-4 py-2 text-sm font-medium text-slate-600">Top ${i+1}</td><td class="px-4 py-2 text-sm">${a.路线名称 || '—'}<br><span class="text-xs text-slate-400">得分 ${a.匹配得分?.toFixed(1) || '—'}</span><br><span class="text-xs">强度 ${a.推荐强度 || '—'} / 风险 ${a.风险等级 || '—'}</span><br><span class="text-xs text-emerald-600">${a.核心匹配 || ''}</span></td><td class="px-4 py-2 text-sm">${b.路线名称 || '—'}<br><span class="text-xs text-slate-400">得分 ${b.匹配得分?.toFixed(1) || '—'}</span><br><span class="text-xs">强度 ${b.推荐强度 || '—'} / 风险 ${b.风险等级 || '—'}</span><br><span class="text-xs text-emerald-600">${b.核心匹配 || ''}</span></td></tr>`;
+      }
+      html += `</tbody></table></div><div class="mt-3 text-xs text-slate-400">📅 ${new Date(latest.timestamp).toLocaleString()}  vs  ${new Date(previous.timestamp).toLocaleString()}</div>`;
+      return html;
+    };
+    compareContent.innerHTML = renderCompareTable(latest.recommendations, previous.recommendations, `最新推荐 (${new Date(latest.timestamp).toLocaleString().slice(0,16)})`, `上一次推荐 (${new Date(previous.timestamp).toLocaleString().slice(0,16)})`);
+    compareModal.classList.remove('hidden');
+    lucide.createIcons();
+  }
+  function closeCompareModal() { compareModal.classList.add('hidden'); }
+
+  function generateDeepExplanationHTML(explanation, routeName, materialType) {
+    let redHtml = '';
+    if (explanation.red_line_reasons && explanation.red_line_reasons.length > 0) {
+      redHtml = `<div class="bg-rose-50 rounded-xl p-4 mt-3"><div class="font-semibold text-rose-700 flex items-center gap-2"><i data-lucide="alert-triangle" class="w-4 h-4"></i> 红线规则触发原因</div><ul class="mt-2 space-y-1 list-disc pl-5 text-sm text-rose-600">${explanation.red_line_reasons.map(r => `<li>${r}</li>`).join('')}</ul></div>`;
+    } else {
+      redHtml = `<div class="bg-emerald-50 rounded-xl p-4 mt-3"><div class="font-semibold text-emerald-700 flex items-center gap-2"><i data-lucide="check-circle" class="w-4 h-4"></i> 红线规则</div><p class="mt-1 text-sm text-slate-600">✅ 未触发任何红线，该路线合规可用。</p></div>`;
+    }
+    let contribHtml = `<div class="bg-white ring-1 ring-emerald-100 rounded-xl p-4 mt-3"><div class="font-semibold text-slate-800 flex items-center gap-2"><i data-lucide="bar-chart" class="w-4 h-4 text-emerald-600"></i> 特征贡献度（影响得分）</div><div class="mt-3 space-y-3">`;
+    const contribs = explanation.feature_contributions_top || [];
+    if (contribs.length === 0) {
+      contribHtml += `<div class="text-sm text-slate-500">暂无贡献度数据</div>`;
+    } else {
+      const maxAbs = Math.max(...contribs.map(c => Math.abs(c.contribution)), 0.001);
+      for (let c of contribs) {
+        const widthPercent = (Math.abs(c.contribution) / maxAbs) * 100;
+        const isPositive = c.contribution >= 0;
+        const barColor = isPositive ? 'bg-emerald-500' : 'bg-rose-400';
+        const sign = isPositive ? '+' : '';
+        contribHtml += `<div><div class="flex justify-between text-xs"><span>${c.feature}</span><span class="font-mono ${isPositive ? 'text-emerald-600' : 'text-rose-500'}">${sign}${c.contribution.toFixed(3)}</span></div><div class="w-full bg-gray-100 rounded-full h-2 mt-1"><div class="${barColor} h-2 rounded-full contrib-bar" style="width: ${widthPercent}%"></div></div></div>`;
+      }
+    }
+    contribHtml += `</div></div>`;
+    let cases = [];
+    if (materialType === '茶渣') {
+      cases = ['某茶厂将茶渣热解制生物炭，用于废水吸附，年处理量500吨。', '调味茶渣经堆肥发酵后制成有机肥，改善土壤结构。'];
+    } else if (materialType.includes('果渣')) {
+      cases = ['柑橘果渣提取果胶后残渣做饲料，实现全量利用。', '葡萄皮渣干燥粉碎后作为天然色素原料，供应食品企业。'];
+    } else if (materialType === '花生壳/板栗壳') {
+      cases = ['花生壳制备活性炭，用于空气净化器滤芯。', '板栗壳作为生物质燃料，替代燃煤。'];
+    } else if (materialType === '豆制品/粮食发酵副产物') {
+      cases = ['豆腐渣发酵生产蛋白饲料，降低养殖成本。', '酒糟厌氧发酵产沼气，用于厂区供热。'];
+    } else if (materialType === '中药残余废弃物') {
+      cases = ['五指毛桃残渣提取黄酮后渣做有机肥。', '中药渣制成生物质颗粒燃料，清洁焚烧。'];
+    } else {
+      cases = ['副产物经简单预处理后作为路基填充材料。', '与秸秆混合进行好氧堆肥，生产土壤改良剂。'];
+    }
+    const casesHtml = `<div class="bg-slate-50 rounded-xl p-4 mt-3"><div class="font-semibold text-slate-800 flex items-center gap-2"><i data-lucide="book-open" class="w-4 h-4 text-emerald-600"></i> 类似案例参考</div><ul class="mt-2 space-y-2 list-disc pl-5 text-sm text-slate-600">${cases.map(c => `<li>${c}</li>`).join('')}</ul></div>`;
+    return redHtml + contribHtml + casesHtml;
+  }
+
+  function showDeepExplanation(explanation, routeName, materialType) {
+    deepModalTitle.innerHTML = `<i data-lucide="info" class="w-5 h-5 text-emerald-600"></i> 深度解释 · ${routeName}`;
+    deepContent.innerHTML = generateDeepExplanationHTML(explanation, routeName, materialType);
+    deepModal.classList.remove('hidden');
+    lucide.createIcons();
+  }
+  function closeDeepModal() { deepModal.classList.add('hidden'); }
+
+  function getScoreRing(score, max=12) { const percent = (score/max)*100; const color=percent>=80?"#2e7d32":(percent>=50?"#eab308":"#dc2626"); return `<div class="relative w-14 h-14"><svg viewBox="0 0 36 36"><path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e2e8f0" stroke-width="3"/><path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831" fill="none" stroke="${color}" stroke-width="3" stroke-dasharray="${percent}, 100" stroke-linecap="round"/><text x="18" y="23" text-anchor="middle" font-size="6" fill="#1e293b" font-weight="bold">${score.toFixed(1)}</text></svg></div>`; }
+
+  // 卡片模板：增加生成合同按钮
+  function cardTemplate(item, idx, materialType, userTonnage) {
+    const exp = item.explanation || {};
+    const red = (exp.red_line_reasons || []).map(r => `<li class="text-rose-600 text-xs">⚠️ ${r}</li>`).join("");
+    const core = (exp.core_reasons || []).map(r => `<span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] text-emerald-800">${r}</span>`).join(" ");
+    const contribs = (exp.feature_contributions_top || []).slice(0,3).map(c => `<div class="flex justify-between text-xs"><span>${c.feature}</span><span class="font-mono ${c.contribution>=0?'text-emerald-600':'text-rose-500'}">${c.contribution.toFixed(3)}</span></div>`).join("");
+    const multiScores = `
+      <div class="flex flex-wrap gap-2 mt-2 text-[10px]">
+        <span class="bg-amber-50 px-2 py-0.5 rounded-full">💰成本 ${Number(item["成本得分"]).toFixed(1)}</span>
+        <span class="bg-sky-50 px-2 py-0.5 rounded-full">⚙️技术 ${Number(item["技术得分"]).toFixed(1)}</span>
+        <span class="bg-green-50 px-2 py-0.5 rounded-full">🌿碳减排 ${Number(item["碳减排得分"]).toFixed(1)}</span>
+        <span class="bg-purple-50 px-2 py-0.5 rounded-full">📈市场 ${Number(item["市场得分"]).toFixed(1)}</span>
+        ${item["加权总分"] ? `<span class="bg-emerald-100 px-2 py-0.5 rounded-full font-semibold">加权总分 ${Number(item["加权总分"]).toFixed(1)}</span>` : ''}
+      </div>
+    `;
+    return `<div class="card-hover rounded-2xl bg-white p-5 ring-1 ring-emerald-100">
+      <div class="flex flex-wrap justify-between items-start gap-3">
+        <div class="flex-1">
+          <div class="flex items-center gap-2 flex-wrap"><span class="text-lg font-bold">${item["路线名称"]}</span> ${core?`<div class="flex gap-1">${core}</div>`:''}</div>
+          <div class="text-xs text-slate-500 mt-1">${item["路线编号"]} · ${item["首选目标"]} · 风险 ${item["风险等级"]} · 强度 ${item["推荐强度"]}</div>
+          ${multiScores}
+        </div>
+        <div class="flex items-center gap-2"><div class="text-right"><div class="text-xs text-slate-400">匹配得分</div><div class="text-xl font-bold">${Number(item["匹配得分"]).toFixed(1)}</div></div>${getScoreRing(item["匹配得分"],12)}</div>
+      </div>
+      <div class="mt-4 grid md:grid-cols-2 gap-4">
+        <div class="bg-emerald-50/50 rounded-xl p-3"><div class="text-xs font-semibold"><i data-lucide="message-square" class="inline w-3 h-3 mr-1"></i> 推荐理由</div><div class="text-sm mt-1">${item["推荐理由关键词"] || "—"}</div></div>
+        <div class="bg-slate-50/50 rounded-xl p-3"><div class="text-xs font-semibold"><i data-lucide="bar-chart" class="inline w-3 h-3 mr-1"></i> 贡献度 Top3</div><div class="mt-1 space-y-1">${contribs || "<span class='text-xs text-slate-400'>无贡献度数据</span>"}</div></div>
+      </div>
+      <div class="mt-3 flex justify-between items-center">
+        <button class="deep-explain-btn text-xs bg-white ring-1 ring-emerald-200 rounded-full px-3 py-1.5 text-emerald-700 hover:bg-emerald-50 transition flex items-center gap-1" data-route-name="${item["路线名称"]}" data-explanation='${JSON.stringify(exp)}' data-material="${materialType}">
+          <i data-lucide="info" class="w-3 h-3"></i> 深度解释
+        </button>
+        <!-- 新增生成合同按钮 -->
+        <button class="contract-btn text-xs bg-white ring-1 ring-emerald-200 rounded-full px-3 py-1.5 text-emerald-700 hover:bg-emerald-50 transition flex items-center gap-1" data-material="${materialType}" data-route="${item["路线名称"]}" data-tonnage="${userTonnage}">
+          <i data-lucide="file-text" class="w-3 h-3"></i> 生成合同
+        </button>
+      </div>
+      ${red ? `<div class="mt-3 bg-rose-50/80 rounded-xl p-3"><div class="text-xs font-semibold text-rose-700">红线提示</div><ul class="mt-1">${red}</ul></div>` : ""}
+    </div>`;
+  }
+
+  function generateMarkdownReport(user_profile, recommendations) {
+    let md = `# 副产物高值化利用智能推荐报告\n\n`;
+    md += `## 用户输入信息\n`;
+    md += `- **原料类型**：${user_profile["原料类型"]}\n`;
+    md += `- **霉变情况**：${user_profile["霉变情况"]}\n`;
+    md += `- **来源情况**：${user_profile["来源情况"]}\n`;
+    md += `- **预估等级**：${user_profile["预估等级"]}\n`;
+    if (user_profile["是否含调味"]) md += `- **是否含调味**：${user_profile["是否含调味"]}\n`;
+    if (user_profile["储存时间"]) md += `- **储存时间>3天**：${user_profile["储存时间"]}\n`;
+    if (user_profile["褐变情况"]) md += `- **明显褐变**：${user_profile["褐变情况"]}\n`;
+    if (user_profile["泥沙情况"]) md += `- **混入大量泥沙**：${user_profile["泥沙情况"]}\n`;
+    if (user_profile["含水率情况"]) md += `- **含水率高（液态/半固态）**：${user_profile["含水率情况"]}\n`;
+    if (user_profile["药材明确度"]) md += `- **药材类型明确**：${user_profile["药材明确度"]}\n`;
+    md += `\n## Top3 推荐路线\n\n`;
+    recommendations.forEach((item, idx) => {
+      const score = Number(item["匹配得分"]).toFixed(1);
+      md += `### ${idx+1}. ${item["路线名称"]} （匹配得分 ${score}/12）\n`;
+      md += `- **路线编号**：${item["路线编号"]}\n`;
+      md += `- **首选目标**：${item["首选目标"]}\n`;
+      md += `- **推荐强度**：${item["推荐强度"]} | **风险等级**：${item["风险等级"]}\n`;
+      md += `- **推荐理由**：${item["推荐理由关键词"] || "—"}\n`;
+      md += `- **多维度得分**：成本 ${Number(item["成本得分"]).toFixed(1)}，技术 ${Number(item["技术得分"]).toFixed(1)}，碳减排 ${Number(item["碳减排得分"]).toFixed(1)}，市场 ${Number(item["市场得分"]).toFixed(1)}\n`;
+      const exp = item.explanation || {};
+      if (exp.core_reasons && exp.core_reasons.length) {
+        md += `- **核心匹配**：${exp.core_reasons.join(", ")}\n`;
+      }
+      if (exp.red_line_reasons && exp.red_line_reasons.length) {
+        md += `- **红线触发**：${exp.red_line_reasons.join("；")}\n`;
+      } else {
+        md += `- **红线触发**：无\n`;
+      }
+      if (exp.feature_contributions_top && exp.feature_contributions_top.length) {
+        md += `- **贡献度 Top3**：\n`;
+        exp.feature_contributions_top.slice(0,3).forEach(c => {
+          md += `  - ${c.feature}：${c.contribution >= 0 ? '+' : ''}${c.contribution.toFixed(3)}\n`;
+        });
+      }
+      md += `\n`;
+    });
+    md += `---\n`;
+    md += `*报告生成时间：${new Date().toLocaleString()}*`;
+    return md;
+  }
+
+  async function copyReport() {
+    if (!lastPayload || !lastPayload.recommendations || lastPayload.recommendations.length === 0) {
+      alert("暂无推荐结果，请先生成推荐方案。");
+      return;
+    }
+    const md = generateMarkdownReport(lastPayload.user_profile, lastPayload.recommendations);
+    try {
+      await navigator.clipboard.writeText(md);
+      alert("✅ 报告已复制到剪贴板，可粘贴为 Markdown 文件或文档。");
+    } catch (err) {
+      alert("复制失败，请手动复制。");
+    }
+  }
+
+  function generateFullReportHTML(user_profile, recommendations) {
+    let html = `<div class="pdf-report"><div style="text-align:center;border-bottom:2px solid #2e7d32;padding-bottom:12px;"><h1 style="font-size:24px;font-weight:bold;color:#2e7d32;">副产物高值化利用智能推荐报告</h1><p style="font-size:12px;color:#64748b;">生成时间：${new Date().toLocaleString()}</p></div><div><h2>用户输入信息</h2><ul>`;
+    html += `<li><strong>原料类型</strong>：${user_profile["原料类型"]}</li>`;
+    html += `<li><strong>霉变情况</strong>：${user_profile["霉变情况"]}</li>`;
+    html += `<li><strong>来源情况</strong>：${user_profile["来源情况"]}</li>`;
+    html += `<li><strong>预估等级</strong>：${user_profile["预估等级"]}</li>`;
+    if (user_profile["是否含调味"]) html += `<li><strong>是否含调味</strong>：${user_profile["是否含调味"]}</li>`;
+    if (user_profile["储存时间"]) html += `<li><strong>储存时间>3天</strong>：${user_profile["储存时间"]}</li>`;
+    if (user_profile["褐变情况"]) html += `<li><strong>明显褐变</strong>：${user_profile["褐变情况"]}</li>`;
+    if (user_profile["泥沙情况"]) html += `<li><strong>混入大量泥沙</strong>：${user_profile["泥沙情况"]}</li>`;
+    if (user_profile["含水率情况"]) html += `<li><strong>含水率高</strong>：${user_profile["含水率情况"]}</li>`;
+    if (user_profile["药材明确度"]) html += `<li><strong>药材类型明确</strong>：${user_profile["药材明确度"]}</li>`;
+    html += `</ul></div><div>`;
+    recommendations.forEach((item, idx) => {
+      const exp = item.explanation || {};
+      html += `<div class="pdf-card"><h3>${idx+1}. ${item["路线名称"]}</h3><div>匹配得分 ${Number(item["匹配得分"]).toFixed(1)}/12 · 成本 ${Number(item["成本得分"]).toFixed(1)} · 技术 ${Number(item["技术得分"]).toFixed(1)} · 碳减排 ${Number(item["碳减排得分"]).toFixed(1)} · 市场 ${Number(item["市场得分"]).toFixed(1)}</div><div>推荐理由：${item["推荐理由关键词"] || "—"}</div>`;
+      html += `<div>${generateDeepExplanationHTML(exp, item["路线名称"], user_profile["原料类型"]).replace(/<button[^>]*>.*?<\/button>/g, '')}</div></div>`;
+    });
+    html += `</div></div>`;
+    return html;
+  }
+
+  async function exportToPdf() {
+    if (!lastPayload || !lastPayload.recommendations || lastPayload.recommendations.length === 0) {
+      alert("暂无推荐结果，请先生成推荐方案。");
+      return;
+    }
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = 'pdfLoading';
+    loadingDiv.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm';
+    loadingDiv.innerHTML = '<div class="bg-white rounded-2xl p-6 shadow-xl flex items-center gap-3"><div class="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-600"></div><span class="text-slate-700">正在生成 PDF，请稍候...</span></div>';
+    document.body.appendChild(loadingDiv);
+    try {
+      const fullHtml = generateFullReportHTML(lastPayload.user_profile, lastPayload.recommendations);
+      const tempDiv = document.createElement('div');
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      tempDiv.style.top = '0';
+      tempDiv.style.width = '800px';
+      tempDiv.innerHTML = fullHtml;
+      document.body.appendChild(tempDiv);
+      const canvas = await html2canvas(tempDiv, { scale: 2, backgroundColor: '#ffffff', logging: false });
+      document.body.removeChild(tempDiv);
+      const { jsPDF } = window.jspdf;
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = 210;
+      const pageHeight = 297;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let pdf = new jsPDF('p', 'mm', 'a4');
+      let position = 0;
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      let remainingHeight = imgHeight - pageHeight;
+      while (remainingHeight > 0) {
+        position = position - pageHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        remainingHeight -= pageHeight;
+      }
+      pdf.save(`推荐报告_多目标_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.pdf`);
+    } catch (err) {
+      console.error(err);
+      alert("生成 PDF 失败，请重试。");
+    } finally {
+      const loading = document.getElementById('pdfLoading');
+      if (loading) loading.remove();
+    }
+  }
+
+  async function submitRecommendation(skipAutoFlag = false) {
+    setError(null); 
+    cardsEl.innerHTML = "";
+    skeletonLoader.classList.remove("hidden"); 
+    exportBtn.classList.add("hidden");
+    
+    const user_profile = {
+      "原料类型": materialInput.value,
+      "霉变情况": moldInput.value,
+      "来源情况": sourceInput.value,
+      "预估等级": gradeInput.value,
+    };
+    const flavor = document.getElementById("flavor");
+    const storage = document.getElementById("storage");
+    const browning = document.getElementById("browning");
+    const sand = document.getElementById("sand");
+    const moisture = document.getElementById("moisture");
+    const herbClarity = document.getElementById("herbClarity");
+    if (flavor) user_profile["是否含调味"] = flavor.value;
+    if (storage) user_profile["储存时间"] = storage.value;
+    if (browning) user_profile["褐变情况"] = browning.value;
+    if (sand) user_profile["泥沙情况"] = sand.value;
+    if (moisture) user_profile["含水率情况"] = moisture.value;
+    if (herbClarity) user_profile["药材明确度"] = herbClarity.value;
+    
+    // 获取吨数（用于合同生成）
+    const tonnage = parseFloat(tonnageInput.value) || 100;
+    
+    const weights = {
+      "成本": parseFloat(wCost.value),
+      "技术": parseFloat(wTech.value),
+      "碳减排": parseFloat(wCarbon.value),
+      "市场": parseFloat(wMarket.value)
+    };
+    
+    try {
+      const res = await fetch("/api/recommend", { 
+        method:"POST", 
+        headers:{"Content-Type":"application/json"}, 
+        body: JSON.stringify({ user_profile, weights }) 
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.detail || "请求失败");
+      lastPayload = data; 
+      exportBtn.classList.remove("hidden");
+      const items = data.recommendations || [];
+      skeletonLoader.classList.add("hidden");
+      if (!items.length) { cardsEl.innerHTML = "<div class='bg-white/70 rounded-2xl p-6 text-center text-slate-500'>暂无推荐结果</div>"; return; }
+      // 传入用户吨数
+      cardsEl.innerHTML = items.map((it, idx) => cardTemplate(it, idx, user_profile["原料类型"], tonnage)).join("");
+      lucide.createIcons();
+      document.querySelectorAll('.deep-explain-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const routeName = btn.dataset.routeName;
+          const explanation = JSON.parse(btn.dataset.explanation);
+          const material = btn.dataset.material;
+          showDeepExplanation(explanation, routeName, material);
+        });
+      });
+      // 绑定合同按钮事件
+      document.querySelectorAll('.contract-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const material = btn.dataset.material;
+          const route = btn.dataset.route;
+          const tonnageVal = btn.dataset.tonnage;
+          window.open(`/contract-generator?material=${encodeURIComponent(material)}&route=${encodeURIComponent(route)}&tonnage=${tonnageVal}`, '_blank');
+        });
+      });
+      saveToHistory(user_profile, items);
+    } catch(err) { skeletonLoader.classList.add("hidden"); cardsEl.innerHTML = ""; setError(err.message); }
+  }
+
+  function setError(msg) { if(msg){ errorEl.classList.remove("hidden"); errorEl.textContent=msg; } else { errorEl.classList.add("hidden"); errorEl.textContent=""; } }
+
+  // 事件绑定
+  exportBtn.addEventListener("click", () => { if(lastPayload){ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([JSON.stringify(lastPayload,null,2)],{type:"application/json"})); a.download="recommendation_result.json"; a.click(); URL.revokeObjectURL(a.href); } });
+  exportReportBtn.addEventListener("click", copyReport);
+  exportPdfBtn.addEventListener("click", exportToPdf);
+  compareBtn.addEventListener("click", showCompareModal);
+  document.getElementById('closeModalBtn')?.addEventListener("click", closeCompareModal);
+  document.getElementById('closeModalFooterBtn')?.addEventListener("click", closeCompareModal);
+  compareModal?.addEventListener("click", (e) => { if(e.target === compareModal) closeCompareModal(); });
+  document.getElementById('closeDeepModalBtn')?.addEventListener("click", closeDeepModal);
+  document.getElementById('closeDeepModalFooterBtn')?.addEventListener("click", closeDeepModal);
+  deepModal?.addEventListener("click", (e) => { if(e.target === deepModal) closeDeepModal(); });
+  prevBtn.addEventListener("click", prevStep);
+  nextBtn.addEventListener("click", nextStep);
+  submitBtn.addEventListener("click", () => submitRecommendation(false));
+
+  // 初始化
+  renderMaterialCards();
+  renderMoldOptions();
+  renderSourceOptions();
+  renderGradeStars();
+  updateStepIndicator();
+  updateWeightDisplays();
+  lucide.createIcons();
+</script>
+</body>
+</html>

@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ title }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+      * {
+        font-family: 'Inter', 'Space Grotesk', system-ui, -apple-system, sans-serif;
+      }
+
+      body {
+        animation: fadeIn 0.8s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+        background: radial-gradient(ellipse at 20% 30%, rgba(46,125,50,0.08) 0%, rgba(255,255,255,0) 70%),
+                    radial-gradient(ellipse at 80% 70%, rgba(255,193,7,0.05) 0%, rgba(255,255,255,0) 60%);
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      /* 动态光晕动画 */
+      .orb {
+        position: fixed;
+        border-radius: 50%;
+        filter: blur(80px);
+        opacity: 0.5;
+        pointer-events: none;
+        z-index: -10;
+        animation: float 20s infinite ease-in-out;
+      }
+
+      @keyframes float {
+        0% { transform: translate(0, 0) scale(1); }
+        50% { transform: translate(5%, 5%) scale(1.2); }
+        100% { transform: translate(0, 0) scale(1); }
+      }
+
+      /* 网格背景 */
+      .grid-bg {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: 
+          linear-gradient(rgba(46,125,50,0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(46,125,50,0.03) 1px, transparent 1px);
+        background-size: 40px 40px;
+        pointer-events: none;
+        z-index: -5;
+      }
+
+      /* 玻璃卡片 */
+      .glass-card {
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+      }
+      .glass-card:hover {
+        background: rgba(255, 255, 255, 0.75);
+        border-color: rgba(46,125,50,0.3);
+        box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.15);
+        transform: translateY(-4px);
+      }
+
+      /* 科技感发光按钮 */
+      .glow-btn {
+        transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
+      }
+      .glow-btn::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(46,125,50,0.3);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+      }
+      .glow-btn:hover::after {
+        width: 300px;
+        height: 300px;
+      }
+      .glow-btn:hover {
+        border-color: #2e7d32;
+        box-shadow: 0 8px 20px -8px rgba(46,125,50,0.4);
+        transform: translateY(-2px);
+      }
+
+      /* 标题渐变光效 */
+      .gradient-text {
+        background: linear-gradient(135deg, #1e4620, #2e7d32, #4caf50);
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        animation: shimmer 3s linear infinite;
+      }
+      @keyframes shimmer {
+        0% { background-position: 0% 50%; }
+        100% { background-position: 200% 50%; }
+      }
+
+      /* 特征卡片 */
+      .feature-card {
+        transition: all 0.3s ease;
+      }
+      .feature-card:hover {
+        transform: translateY(-6px);
+        border-color: #2e7d32;
+        background: rgba(255,255,255,0.8);
+        box-shadow: 0 20px 30px -15px rgba(46,125,50,0.2);
+      }
+    </style>
+  </head>
+  <body class="min-h-screen text-slate-800 relative">
+    <!-- 动态光晕背景 -->
+    <div class="orb w-[500px] h-[500px] bg-emerald-300 top-[-10%] left-[-10%]"></div>
+    <div class="orb w-[600px] h-[600px] bg-amber-200 bottom-[-20%] right-[-10%]" style="animation-delay: -5s;"></div>
+    <div class="orb w-[400px] h-[400px] bg-teal-200 top-[30%] right-[20%]" style="animation-delay: -10s; filter: blur(100px);"></div>
+    <div class="grid-bg"></div>
+
+    <header class="mx-auto max-w-6xl px-6 pt-8 relative z-10">
+      <div class="flex items-center justify-between gap-4 flex-wrap">
+        <div class="flex items-center gap-3">
+          <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-emerald-400 text-white shadow-md shadow-emerald-200/50 flex items-center justify-center">
+            <i data-lucide="leaf" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <div class="text-lg font-bold tracking-tight bg-gradient-to-r from-emerald-800 to-emerald-600 bg-clip-text text-transparent">BioValley 智荐</div>
+            <div class="text-slate-500 text-xs">农副产物高值化引擎</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-4">
+          <a href="/grading" class="text-sm text-slate-500 hover:text-emerald-600 transition flex items-center gap-1">
+            <i data-lucide="image" class="w-4 h-4"></i> 分级教学
+          </a>
+          <a href="/recommend" class="text-sm text-slate-500 hover:text-emerald-600 transition flex items-center gap-1">
+            <i data-lucide="sparkles" class="w-4 h-4"></i> 智能推荐
+          </a>
+          <a href="/batch-recommend" class="text-sm text-slate-500 hover:text-emerald-600 transition flex items-center gap-1">
+            <i data-lucide="layers" class="w-4 h-4"></i> 批量推荐
+          </a>
+          <a href="/carbon-calculator" class="text-sm text-slate-500 hover:text-emerald-600 transition flex items-center gap-1">
+            <i data-lucide="leaf" class="w-4 h-4"></i> 碳足迹
+          </a>
+          <a href="/resource-valuation" class="text-sm text-slate-500 hover:text-emerald-600 transition flex items-center gap-1">
+            <i data-lucide="trending-up" class="w-4 h-4"></i> 价值评估
+          </a>
+          <a href="/carbon-market" class="text-sm text-slate-500 hover:text-emerald-600 transition flex items-center gap-1">
+            <i data-lucide="coins" class="w-4 h-4"></i> 碳积分市场
+          </a>
+          <a href="/recommend" class="group rounded-xl bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow-md shadow-emerald-200 transition-all hover:bg-emerald-500 hover:shadow-lg flex items-center gap-2">
+            <i data-lucide="sparkles" class="w-4 h-4 group-hover:rotate-12 transition-transform"></i>
+            开始推荐
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-6xl px-6 pb-20 pt-12 relative z-10">
+      <div class="grid gap-12 lg:grid-cols-2 lg:items-center">
+        <div>
+          <div class="inline-flex items-center gap-2 rounded-full bg-emerald-100/60 backdrop-blur-sm px-3 py-1 text-xs font-medium text-emerald-700 border border-emerald-200/50">
+            <i data-lucide="bot" class="w-3 h-3"></i> AI + 知识库
+          </div>
+          <h1 class="mt-6 text-5xl lg:text-6xl font-bold leading-tight tracking-tight">
+            把<span class="gradient-text">经验决策</span><br>变成<span class="gradient-text">可执行方案卡</span>
+          </h1>
+          <p class="mt-6 text-slate-600 leading-relaxed text-lg">
+            面向茶渣、果渣、花生壳等农林加工副产物，提供质量分级教学、处置路线智能推荐、碳积分激励、批量产能优化全流程服务，<br class="hidden lg:block">输出步骤、参数范围、注意事项，并给出推荐原因与风险提示。
+          </p>
+          <div class="mt-10 flex flex-wrap gap-4">
+            <a href="/grading" class="glow-btn flex items-center gap-2 rounded-xl bg-white/80 backdrop-blur-sm px-5 py-2.5 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200 transition-all hover:ring-emerald-400">
+              <i data-lucide="image" class="w-4 h-4"></i>
+              看图分级教学
+            </a>
+            <a href="/recommend" class="glow-btn flex items-center gap-2 rounded-xl bg-white/80 backdrop-blur-sm px-5 py-2.5 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200 transition-all hover:ring-emerald-400">
+              <i data-lucide="zap" class="w-4 h-4"></i>
+              智能推荐 Top3
+            </a>
+            <a href="/batch-recommend" class="glow-btn flex items-center gap-2 rounded-xl bg-white/80 backdrop-blur-sm px-5 py-2.5 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200 transition-all hover:ring-emerald-400">
+              <i data-lucide="layers" class="w-4 h-4"></i>
+              批量推荐与产能匹配
+            </a>
+            <a href="/carbon-calculator" class="glow-btn flex items-center gap-2 rounded-xl bg-white/80 backdrop-blur-sm px-5 py-2.5 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200 transition-all hover:ring-emerald-400">
+              <i data-lucide="leaf" class="w-4 h-4"></i>
+              碳足迹计算器
+            </a>
+            <a href="/resource-valuation" class="glow-btn flex items-center gap-2 rounded-xl bg-white/80 backdrop-blur-sm px-5 py-2.5 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200 transition-all hover:ring-emerald-400">
+              <i data-lucide="trending-up" class="w-4 h-4"></i>
+              资源价值评估
+            </a>
+            <a href="/carbon-market" class="glow-btn flex items-center gap-2 rounded-xl bg-white/80 backdrop-blur-sm px-5 py-2.5 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200 transition-all hover:ring-emerald-400">
+              <i data-lucide="coins" class="w-4 h-4"></i>
+              碳积分市场
+            </a>
+          </div>
+          <div class="mt-16 grid grid-cols-5 gap-5">
+            <!-- 原有卡片1：红线规则 -->
+            <div class="feature-card rounded-2xl bg-white/50 backdrop-blur-sm p-4 ring-1 ring-white/50 shadow-sm transition-all hover:bg-white/70">
+              <i data-lucide="shield-check" class="h-6 w-6 text-emerald-600"></i>
+              <div class="mt-2 font-semibold text-slate-800">红线规则</div>
+              <div class="text-xs text-slate-500">自动过滤不可用路线</div>
+            </div>
+            <!-- 原有卡片2：LightGBM 打分 -->
+            <div class="feature-card rounded-2xl bg-white/50 backdrop-blur-sm p-4 ring-1 ring-white/50 shadow-sm transition-all hover:bg-white/70">
+              <i data-lucide="brain" class="h-6 w-6 text-emerald-600"></i>
+              <div class="mt-2 font-semibold text-slate-800">LightGBM 打分</div>
+              <div class="text-xs text-slate-500">精准匹配得分</div>
+            </div>
+            <!-- 原有卡片3：可解释排序 -->
+            <div class="feature-card rounded-2xl bg-white/50 backdrop-blur-sm p-4 ring-1 ring-white/50 shadow-sm transition-all hover:bg-white/70">
+              <i data-lucide="info" class="h-6 w-6 text-emerald-600"></i>
+              <div class="mt-2 font-semibold text-slate-800">可解释排序</div>
+              <div class="text-xs text-slate-500">贡献度要点展示</div>
+            </div>
+            <!-- 新增卡片1：碳积分激励 -->
+            <div class="feature-card rounded-2xl bg-white/50 backdrop-blur-sm p-4 ring-1 ring-white/50 shadow-sm transition-all hover:bg-white/70">
+              <i data-lucide="coins" class="h-6 w-6 text-emerald-600"></i>
+              <div class="mt-2 font-semibold text-slate-800">碳积分激励</div>
+              <div class="text-xs text-slate-500">减排核算与积分兑换</div>
+            </div>
+            <!-- 新增卡片2：批量产能优化（完美匹配图标） -->
+            <div class="feature-card rounded-2xl bg-white/50 backdrop-blur-sm p-4 ring-1 ring-white/50 shadow-sm transition-all hover:bg-white/70">
+              <i data-lucide="factory" class="h-6 w-6 text-emerald-600"></i>
+              <div class="mt-2 font-semibold text-slate-800">批量产能优化</div>
+              <div class="text-xs text-slate-500">规模化高效处置方案</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card rounded-3xl p-6 shadow-xl transition-all hover:shadow-2xl">
+          <div class="flex items-center justify-between">
+            <div class="text-sm font-semibold text-slate-800 flex items-center gap-2">
+              <i data-lucide="file-text" class="w-4 h-4 text-emerald-600"></i> 示例方案卡
+            </div>
+            <div class="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700">演示</div>
+          </div>
+          <div class="mt-5 rounded-2xl bg-gradient-to-br from-emerald-50/80 to-white/80 p-5 ring-1 ring-emerald-100/60">
+            <div class="flex items-start justify-between">
+              <div>
+                <div class="text-xl font-bold text-slate-800">茶渣制生物炭/吸附材料</div>
+                <div class="mt-1 flex flex-wrap gap-2 text-xs">
+                  <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-700">材料主线</span>
+                  <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-700">风险低</span>
+                  <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-700">推荐强</span>
+                </div>
+              </div>
+              <div class="rounded-xl bg-emerald-600 px-3 py-1 text-xs font-bold text-white shadow-sm">Top 1</div>
+            </div>
+            <div class="mt-5 grid gap-4 md:grid-cols-2">
+              <div class="rounded-xl bg-white/80 p-4">
+                <div class="flex items-center gap-1 text-xs font-semibold text-slate-700"><i data-lucide="list-checks" class="w-3 h-3"></i> 关键步骤</div>
+                <ul class="mt-2 space-y-1 text-xs text-slate-600 list-disc pl-4">
+                  <li>前处理：脱水/干燥</li>
+                  <li>热解：温度 450–550℃</li>
+                  <li>活化/成型：水蒸气或 KOH</li>
+                </ul>
+              </div>
+              <div class="rounded-xl bg-white/80 p-4">
+                <div class="flex items-center gap-1 text-xs font-semibold text-slate-700"><i data-lucide="triangle-alert" class="w-3 h-3"></i> 注意事项</div>
+                <ul class="mt-2 space-y-1 text-xs text-slate-600 list-disc pl-4">
+                  <li>避免混入塑料/金属</li>
+                  <li>尾气净化达标</li>
+                  <li>产物 BET > 300 m²/g</li>
+                </ul>
+              </div>
+            </div>
+            <div class="mt-4 text-xs text-slate-500 italic border-t border-emerald-100 pt-3">
+              🧠 推荐原因：原料匹配 + 等级匹配，模型贡献度中“原料是否匹配”权重最高。
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="mx-auto max-w-6xl px-6 pb-8 text-center text-xs text-slate-400 relative z-10">
+      <div class="border-t border-emerald-100/50 pt-6">⚡ 当前“中”等级映射为“良”保证兼容 · 模型持续迭代</div>
+    </footer>
+
+    <script>
+      lucide.createIcons();
+    </script>
+  </body>
+</html>

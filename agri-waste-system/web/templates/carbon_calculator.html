@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    * { font-family: 'Inter', system-ui, sans-serif; }
+    body { animation: fadeIn 0.4s ease; background: radial-gradient(circle at 10% 30%, rgba(46,125,50,0.03), rgba(255,255,255,0.9)); }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .glass-card { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3); }
+    .input-group:focus-within { transform: translateY(-1px); }
+  </style>
+</head>
+<body class="min-h-screen">
+  <div class="max-w-6xl mx-auto px-4 py-6">
+    <header class="flex justify-between items-center mb-8">
+      <a href="/" class="flex items-center gap-1 text-slate-500 hover:text-emerald-600 text-sm">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回首页
+      </a>
+      <div class="flex gap-2">
+        <a href="/grading" class="text-sm text-slate-500 hover:text-emerald-600"><i data-lucide="image" class="inline w-4 h-4 mr-1"></i> 分级教学</a>
+        <a href="/recommend" class="text-sm text-slate-500 hover:text-emerald-600"><i data-lucide="sparkles" class="inline w-4 h-4 mr-1"></i> 智能推荐</a>
+        <a href="/batch-recommend" class="text-sm text-slate-500 hover:text-emerald-600"><i data-lucide="layers" class="inline w-4 h-4 mr-1"></i> 批量推荐</a>
+        <a href="/carbon-calculator" class="text-sm text-slate-500 hover:text-emerald-600"><i data-lucide="leaf" class="inline w-4 h-4 mr-1"></i> 碳足迹</a>
+        <a href="/carbon-market" class="text-sm text-slate-500 hover:text-emerald-600"><i data-lucide="coins" class="inline w-4 h-4 mr-1"></i> 碳积分市场</a>
+      </div>
+    </header>
+
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+        <i data-lucide="leaf" class="w-8 h-8 text-emerald-600"></i>
+        碳足迹计算器 · ESG 报告
+      </h1>
+      <p class="mt-2 text-slate-600">输入副产物处理链信息，估算碳排放，获得碳积分奖励（1kg 减排 = 1 积分）。</p>
+    </div>
+
+    <div class="grid gap-8 lg:grid-cols-2">
+      <!-- 左侧表单 -->
+      <div class="glass-card rounded-2xl p-6">
+        <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><i data-lucide="settings" class="w-5 h-5 text-emerald-600"></i> 参数输入</h2>
+        <div class="space-y-5">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">用户ID（碳积分账户）</label>
+            <input type="text" id="userId" value="demo_user" class="w-full rounded-xl border border-emerald-200 px-4 py-2">
+            <p class="text-xs text-slate-400 mt-1">每次计算减排量会向此账户发放碳积分</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">原料类型</label>
+            <select id="material" class="w-full rounded-xl border border-emerald-200 px-4 py-2 focus:ring-2 focus:ring-emerald-200">
+              <option>茶渣</option>
+              <option>果渣（柑橘/葡萄/猕猴桃等）</option>
+              <option>花生壳/板栗壳</option>
+              <option>豆制品/粮食发酵副产物</option>
+              <option>中药残余废弃物</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">处理吨数 (t)</label>
+            <input type="number" id="tonnage" value="100" step="10" class="w-full rounded-xl border border-emerald-200 px-4 py-2">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">运输距离 (km)</label>
+            <input type="number" id="distance" value="150" step="10" class="w-full rounded-xl border border-emerald-200 px-4 py-2">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">运输方式</label>
+            <select id="transportMode" class="w-full rounded-xl border border-emerald-200 px-4 py-2">
+              <option value="truck">货车 (0.1 kg CO₂e/t·km)</option>
+              <option value="train">火车 (0.02)</option>
+              <option value="ship">轮船 (0.03)</option>
+              <option value="air">飞机 (0.8)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">包装类型</label>
+            <select id="packaging" class="w-full rounded-xl border border-emerald-200 px-4 py-2">
+              <option>散装</option>
+              <option>袋装</option>
+              <option>编织袋</option>
+              <option>无包装</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">预处理能耗</label>
+            <select id="preprocess" class="w-full rounded-xl border border-emerald-200 px-4 py-2">
+              <option>电</option>
+              <option>气</option>
+              <option>无预处理</option>
+              <option>高能耗</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">工艺路线</label>
+            <select id="processRoute" class="w-full rounded-xl border border-emerald-200 px-4 py-2">
+              <option>茶渣制生物炭/吸附材料</option>
+              <option>茶渣发酵生产有机肥</option>
+              <option>茶渣提取茶多酚</option>
+              <option>果渣提取果胶</option>
+              <option>果渣生产饲料</option>
+              <option>果渣制备酵素</option>
+              <option>花生壳制备活性炭</option>
+              <option>花生壳生产板材</option>
+              <option>豆制品副产物生产蛋白饲料</option>
+              <option>豆制品副产物厌氧发酵产沼气</option>
+              <option>中药残余提取黄酮</option>
+              <option>中药渣制备生物质颗粒燃料</option>
+              <option>中药渣堆肥生产土壤改良剂</option>
+            </select>
+          </div>
+          <button id="calculateBtn" class="mt-4 w-full rounded-xl bg-emerald-600 py-3 text-white font-semibold shadow-md hover:bg-emerald-500 transition flex items-center justify-center gap-2">
+            <i data-lucide="calculator" class="w-4 h-4"></i> 计算碳排放 & 获得碳积分
+          </button>
+        </div>
+      </div>
+
+      <!-- 右侧结果展示 -->
+      <div class="space-y-6">
+        <div class="glass-card rounded-2xl p-6">
+          <h2 class="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2"><i data-lucide="bar-chart-3" class="w-5 h-5 text-emerald-600"></i> 碳排放汇总</h2>
+          <div class="text-center py-4">
+            <div class="text-4xl font-bold text-emerald-600" id="totalEmissions">0</div>
+            <div class="text-sm text-slate-500">kg CO₂e</div>
+          </div>
+          <div class="grid grid-cols-2 gap-3 text-sm mt-4">
+            <div class="bg-emerald-50 rounded-xl p-3 text-center"><span class="font-semibold">🚛 运输</span><br><span id="transportVal">0</span> kg</div>
+            <div class="bg-emerald-50 rounded-xl p-3 text-center"><span class="font-semibold">📦 包装</span><br><span id="packagingVal">0</span> kg</div>
+            <div class="bg-emerald-50 rounded-xl p-3 text-center"><span class="font-semibold">⚙️ 预处理</span><br><span id="preprocessVal">0</span> kg</div>
+            <div class="bg-emerald-50 rounded-xl p-3 text-center"><span class="font-semibold">🏭 工艺</span><br><span id="processVal">0</span> kg</div>
+          </div>
+        </div>
+
+        <!-- 新增碳积分奖励卡片 -->
+        <div class="glass-card rounded-2xl p-6">
+          <h2 class="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2"><i data-lucide="coins" class="w-5 h-5 text-emerald-600"></i> 碳积分奖励</h2>
+          <div class="flex justify-between items-center border-b border-emerald-100 pb-3 mb-3">
+            <span class="text-slate-600">本次减排量</span>
+            <span id="reductionAmount" class="text-xl font-bold text-emerald-600">0</span>
+            <span class="text-slate-500">kg CO₂e</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-slate-600">获得碳积分</span>
+            <span id="pointsAwarded" class="text-2xl font-bold text-emerald-600">0</span>
+            <span class="text-slate-500">积分</span>
+          </div>
+          <div class="mt-3 text-xs text-slate-400 bg-emerald-50 p-2 rounded-lg">
+            💡 1 积分 = 1 kg CO₂e 减排，可在 <a href="/carbon-market" class="text-emerald-600 underline">碳积分市场</a> 交易。
+          </div>
+        </div>
+
+        <div class="glass-card rounded-2xl p-6">
+          <h2 class="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2"><i data-lucide="pie-chart" class="w-5 h-5 text-emerald-600"></i> 排放构成图</h2>
+          <canvas id="emissionChart" height="200"></canvas>
+        </div>
+
+        <div class="glass-card rounded-2xl p-6" id="reportSection">
+          <h2 class="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2"><i data-lucide="file-text" class="w-5 h-5 text-emerald-600"></i> ESG 报告摘要</h2>
+          <div id="reportText" class="text-sm text-slate-600 space-y-2">
+            <p>请点击“计算碳排放”生成报告。</p>
+          </div>
+          <button id="exportPdfBtn" class="mt-4 w-full rounded-xl bg-white ring-1 ring-emerald-200 py-2 text-emerald-700 hover:bg-emerald-50 transition flex items-center justify-center gap-2">
+            <i data-lucide="download" class="w-4 h-4"></i> 导出报告 (PDF)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    lucide.createIcons();
+    let emissionData = null;
+    let chart = null;
+    let currentPayload = null;
+
+    document.getElementById('calculateBtn').addEventListener('click', async () => {
+      const payload = {
+        user_id: document.getElementById('userId').value.trim() || "guest",
+        material: document.getElementById('material').value,
+        tonnage: parseFloat(document.getElementById('tonnage').value),
+        transport_distance: parseFloat(document.getElementById('distance').value),
+        transport_mode: document.getElementById('transportMode').value,
+        packaging_type: document.getElementById('packaging').value,
+        preprocess_energy: document.getElementById('preprocess').value,
+        process_route: document.getElementById('processRoute').value
+      };
+      currentPayload = payload;
+      try {
+        const res = await fetch('/api/carbon_footprint', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        emissionData = data;
+
+        // 更新显示
+        document.getElementById('totalEmissions').innerText = data.total_emission;
+        document.getElementById('transportVal').innerText = data.transport_emission;
+        document.getElementById('packagingVal').innerText = data.packaging_emission;
+        document.getElementById('preprocessVal').innerText = data.preprocess_emission;
+        document.getElementById('processVal').innerText = data.process_emission;
+
+        // 更新碳积分显示
+        document.getElementById('reductionAmount').innerText = data.reduction || 0;
+        document.getElementById('pointsAwarded').innerText = data.carbon_points_awarded || 0;
+
+        // 更新图表
+        if (chart) chart.destroy();
+        const ctx = document.getElementById('emissionChart').getContext('2d');
+        chart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: ['运输', '包装', '预处理', '工艺'],
+            datasets: [{
+              label: '碳排放 (kg CO₂e)',
+              data: [data.transport_emission, data.packaging_emission, data.preprocess_emission, data.process_emission],
+              backgroundColor: ['#4ade80', '#22c55e', '#16a34a', '#15803d']
+            }]
+          },
+          options: { responsive: true, maintainAspectRatio: true }
+        });
+
+        // 生成报告文本（加入碳积分信息）
+        const totalKg = data.total_emission;
+        const totalTon = (totalKg / 1000).toFixed(2);
+        const reductionKg = data.reduction || 0;
+        const points = data.carbon_points_awarded || 0;
+        document.getElementById('reportText').innerHTML = `
+          <p>✅ 本次处理 <strong>${payload.tonnage} 吨</strong> ${payload.material}，采用 <strong>${payload.process_route}</strong> 路线。</p>
+          <p>🌍 全生命周期碳排放共计 <strong>${totalKg} kg CO₂e</strong>（约 ${totalTon} 吨 CO₂e）。</p>
+          <p>📊 其中：运输占比 ${((data.transport_emission/totalKg)*100).toFixed(1)}%，包装占比 ${((data.packaging_emission/totalKg)*100).toFixed(1)}%，预处理占比 ${((data.preprocess_emission/totalKg)*100).toFixed(1)}%，工艺占比 ${((data.process_emission/totalKg)*100).toFixed(1)}% 。</p>
+          ${reductionKg > 0 ? `<p>🎉 相比传统填埋，本次减排 <strong>${reductionKg} kg CO₂e</strong>，获得 <strong>${points}</strong> 碳积分！</p>` : '<p>⚠️ 当前路线碳排放高于填埋基准，未获得碳积分。</p>'}
+          <p>💡 建议：若降低运输距离或改用清洁能源，可进一步减少碳足迹。</p>
+        `;
+      } catch (err) {
+        alert('计算失败：' + err.message);
+      }
+    });
+
+    // PDF 导出功能（保持不变，但报告中会自动包含碳积分信息）
+    document.getElementById('exportPdfBtn').addEventListener('click', async () => {
+      if (!emissionData || !currentPayload) {
+        alert('请先点击“计算碳排放”生成报告');
+        return;
+      }
+      
+      const pdfContent = document.createElement('div');
+      pdfContent.style.position = 'absolute';
+      pdfContent.style.left = '-9999px';
+      pdfContent.style.top = '0';
+      pdfContent.style.width = '800px';
+      pdfContent.style.backgroundColor = 'white';
+      pdfContent.style.padding = '24px';
+      pdfContent.style.fontFamily = "'Inter', system-ui, sans-serif";
+      pdfContent.style.borderRadius = '16px';
+      
+      const totalKg = emissionData.total_emission;
+      const totalTon = (totalKg / 1000).toFixed(2);
+      const reductionKg = emissionData.reduction || 0;
+      const points = emissionData.carbon_points_awarded || 0;
+      pdfContent.innerHTML = `
+        <div style="text-align: center; border-bottom: 2px solid #2e7d32; padding-bottom: 12px; margin-bottom: 20px;">
+          <h1 style="font-size: 24px; font-weight: bold; color: #2e7d32;">碳足迹评估报告</h1>
+          <p style="font-size: 12px; color: #64748b;">生成时间：${new Date().toLocaleString()}</p>
+        </div>
+        <div style="margin-bottom: 20px;">
+          <h2 style="font-size: 18px; font-weight: bold; color: #1e293b; border-left: 4px solid #2e7d32; padding-left: 12px;">一、输入参数</h2>
+          <table style="width: 100%; margin-top: 12px; border-collapse: collapse; font-size: 13px;">
+            <tr style="background: #f0fdf4;"><td style="padding: 8px; border: 1px solid #e2e8f0;">用户ID</td><td style="padding: 8px; border: 1px solid #e2e8f0;">${currentPayload.user_id}</td></tr>
+            <tr><td style="padding: 8px; border: 1px solid #e2e8f0;">原料类型</td><td style="padding: 8px; border: 1px solid #e2e8f0;">${currentPayload.material}</td></tr>
+            <tr style="background: #f0fdf4;"><td style="padding: 8px; border: 1px solid #e2e8f0;">处理吨数 (t)</td><td style="padding: 8px; border: 1px solid #e2e8f0;">${currentPayload.tonnage}</td></tr>
+            <tr><td style="padding: 8px; border: 1px solid #e2e8f0;">运输距离 (km)</td><td style="padding: 8px; border: 1px solid #e2e8f0;">${currentPayload.transport_distance}</td></tr>
+            <tr style="background: #f0fdf4;"><td style="padding: 8px; border: 1px solid #e2e8f0;">运输方式</td><td style="padding: 8px; border: 1px solid #e2e8f0;">${currentPayload.transport_mode}</td></tr>
+            <tr><td style="padding: 8px; border: 1px solid #e2e8f0;">包装类型</td><td style="padding: 8px; border: 1px solid #e2e8f0;">${currentPayload.packaging_type}</td></tr>
+            <tr style="background: #f0fdf4;"><td style="padding: 8px; border: 1px solid #e2e8f0;">预处理能耗</td><td style="padding: 8px; border: 1px solid #e2e8f0;">${currentPayload.preprocess_energy}</td></tr>
+            <tr><td style="padding: 8px; border: 1px solid #e2e8f0;">工艺路线</td><td style="padding: 8px; border: 1px solid #e2e8f0;">${currentPayload.process_route}</td></tr>
+          </table>
+        </div>
+        <div style="margin-bottom: 20px;">
+          <h2 style="font-size: 18px; font-weight: bold; color: #1e293b; border-left: 4px solid #2e7d32; padding-left: 12px;">二、碳排放结果</h2>
+          <div style="margin-top: 12px;">
+            <div style="background: #f0fdf4; border-radius: 12px; padding: 16px; text-align: center; margin-bottom: 16px;">
+              <div style="font-size: 32px; font-weight: bold; color: #2e7d32;">${totalKg} kg CO₂e</div>
+              <div style="font-size: 13px;">（约 ${totalTon} 吨 CO₂e）</div>
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+              <tr><td style="padding: 8px; background: #f1f5f9;">运输排放</td><td style="padding: 8px;">${emissionData.transport_emission} kg</td><td style="padding: 8px;">${((emissionData.transport_emission/totalKg)*100).toFixed(1)}%</td></tr>
+              <tr><td style="padding: 8px; background: #f1f5f9;">包装排放</td><td style="padding: 8px;">${emissionData.packaging_emission} kg</td><td style="padding: 8px;">${((emissionData.packaging_emission/totalKg)*100).toFixed(1)}%</td></tr>
+              <tr><td style="padding: 8px; background: #f1f5f9;">预处理排放</td><td style="padding: 8px;">${emissionData.preprocess_emission} kg</td><td style="padding: 8px;">${((emissionData.preprocess_emission/totalKg)*100).toFixed(1)}%</td></tr>
+              <tr><td style="padding: 8px; background: #f1f5f9;">工艺排放</td><td style="padding: 8px;">${emissionData.process_emission} kg</td><td style="padding: 8px;">${((emissionData.process_emission/totalKg)*100).toFixed(1)}%</td></tr>
+            </table>
+            ${reductionKg > 0 ? `<div style="background: #e0f2fe; border-radius: 12px; padding: 12px; margin-top: 12px; text-align: center;">
+              <span style="font-weight: bold;">🎉 碳积分奖励</span><br>
+              减排量：${reductionKg} kg CO₂e<br>
+              获得积分：<span style="font-size: 20px; font-weight: bold; color: #2e7d32;">${points}</span> 积分
+            </div>` : ''}
+          </div>
+        </div>
+        <div style="margin-bottom: 20px;">
+          <h2 style="font-size: 18px; font-weight: bold; color: #1e293b; border-left: 4px solid #2e7d32; padding-left: 12px;">三、减排建议</h2>
+          <ul style="margin-top: 12px; font-size: 13px; list-style: disc; padding-left: 20px;">
+            <li>优化运输方式，缩短运输距离或选择低碳运输工具。</li>
+            <li>减少包装材料，优先使用散装或可回收包装。</li>
+            <li>升级预处理设备，提高能效或使用清洁能源。</li>
+            <li>选择工艺碳排放更低的路线（如厌氧发酵、堆肥等）。</li>
+          </ul>
+        </div>
+        <div style="font-size: 10px; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+          *本报告基于输入参数和碳排放因子数据库估算，仅供参考。
+        </div>
+      `;
+      
+      document.body.appendChild(pdfContent);
+      try {
+        const { jsPDF } = window.jspdf;
+        const canvas = await html2canvas(pdfContent, { scale: 2, backgroundColor: '#ffffff', logging: false });
+        const imgData = canvas.toDataURL('image/png');
+        const imgWidth = 210;
+        const pageHeight = 297;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let pdf = new jsPDF('p', 'mm', 'a4');
+        let position = 0;
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        let remainingHeight = imgHeight - pageHeight;
+        while (remainingHeight > 0) {
+          position = position - pageHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          remainingHeight -= pageHeight;
+        }
+        pdf.save(`碳足迹报告_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.pdf`);
+      } catch (err) {
+        console.error(err);
+        alert('生成 PDF 失败，请重试。');
+      } finally {
+        document.body.removeChild(pdfContent);
+      }
+    });
+  </script>
+</body>
+</html>

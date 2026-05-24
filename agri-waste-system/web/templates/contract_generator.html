@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    * { font-family: 'Inter', system-ui, sans-serif; }
+    body { animation: fadeIn 0.4s ease; background: radial-gradient(circle at 10% 30%, rgba(46,125,50,0.03), rgba(255,255,255,0.9)); }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .glass-card { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3); }
+  </style>
+</head>
+<body class="min-h-screen">
+  <div class="max-w-6xl mx-auto px-4 py-6">
+    <header class="flex justify-between items-center mb-8">
+      <a href="/" class="flex items-center gap-1 text-slate-500 hover:text-emerald-600 text-sm">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回首页
+      </a>
+      <div class="flex gap-2">
+        <a href="/grading" class="text-sm text-slate-500 hover:text-emerald-600">分级教学</a>
+        <a href="/recommend" class="text-sm text-slate-500 hover:text-emerald-600">智能推荐</a>
+        <a href="/batch-recommend" class="text-sm text-slate-500 hover:text-emerald-600">批量推荐</a>
+        <a href="/carbon-calculator" class="text-sm text-slate-500 hover:text-emerald-600">碳足迹</a>
+        <a href="/resource-valuation" class="text-sm text-slate-500 hover:text-emerald-600">价值评估</a>
+      </div>
+    </header>
+
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+        <i data-lucide="file-text" class="w-8 h-8 text-emerald-600"></i>
+        智能合同生成器
+      </h1>
+      <p class="mt-2 text-slate-600">填写原料处置信息，一键生成标准化合同（Word文档）。</p>
+    </div>
+
+    <div class="grid gap-8 lg:grid-cols-2">
+      <!-- 左侧表单 -->
+      <div class="glass-card rounded-2xl p-6">
+        <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><i data-lucide="settings" class="w-5 h-5 text-emerald-600"></i> 合同信息</h2>
+        <div class="space-y-5">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">原料类型 *</label>
+            <select id="material" class="w-full rounded-xl border border-emerald-200 px-4 py-2">
+              <option>茶渣</option>
+              <option>果渣（柑橘/葡萄/猕猴桃等）</option>
+              <option>花生壳/板栗壳</option>
+              <option>豆制品/粮食发酵副产物</option>
+              <option>中药残余废弃物</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">处置路线 *</label>
+            <select id="routeName" class="w-full rounded-xl border border-emerald-200 px-4 py-2">
+              <option>茶渣制生物炭/吸附材料</option>
+              <option>茶渣发酵生产有机肥</option>
+              <option>茶渣提取茶多酚</option>
+              <option>果渣提取果胶</option>
+              <option>果渣生产饲料</option>
+              <option>果渣制备酵素</option>
+              <option>花生壳制备活性炭</option>
+              <option>花生壳生产板材</option>
+              <option>豆制品副产物生产蛋白饲料</option>
+              <option>豆制品副产物厌氧发酵产沼气</option>
+              <option>中药残余提取黄酮</option>
+              <option>中药渣制备生物质颗粒燃料</option>
+              <option>中药渣堆肥生产土壤改良剂</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">数量（吨）*</label>
+            <input type="number" id="tonnage" value="100" step="10" class="w-full rounded-xl border border-emerald-200 px-4 py-2">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">单价（元/吨）</label>
+            <input type="number" id="price" value="500" step="50" class="w-full rounded-xl border border-emerald-200 px-4 py-2">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">质量要求（可选）</label>
+            <textarea id="quality" rows="3" class="w-full rounded-xl border border-emerald-200 px-4 py-2" placeholder="例如：霉变率≤5%，含水量≤15%..."></textarea>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">运输方式</label>
+            <select id="transportMode" class="w-full rounded-xl border border-emerald-200 px-4 py-2">
+              <option>货车</option>
+              <option>火车</option>
+              <option>轮船</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">交付地点</label>
+            <input type="text" id="deliveryLocation" value="需方指定仓库" class="w-full rounded-xl border border-emerald-200 px-4 py-2">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">付款方式</label>
+            <select id="paymentTerms" class="w-full rounded-xl border border-emerald-200 px-4 py-2">
+              <option>货到付款</option>
+              <option>预付30%，尾款货到付清</option>
+              <option>月结30天</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">合同有效期</label>
+            <input type="text" id="contractPeriod" value="合同签订后30天内" class="w-full rounded-xl border border-emerald-200 px-4 py-2">
+          </div>
+          <button id="generateBtn" class="mt-4 w-full rounded-xl bg-emerald-600 py-3 text-white font-semibold shadow-md hover:bg-emerald-500 transition flex items-center justify-center gap-2">
+            <i data-lucide="file-text" class="w-4 h-4"></i> 生成合同 (Word)
+          </button>
+        </div>
+      </div>
+
+      <!-- 右侧预览提示 -->
+      <div class="glass-card rounded-2xl p-6">
+        <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><i data-lucide="eye" class="w-5 h-5 text-emerald-600"></i> 合同预览说明</h2>
+        <div class="text-sm text-slate-600 space-y-3">
+          <p>📄 生成的Word文档将包含以下内容：</p>
+          <ul class="list-disc pl-5 space-y-1">
+            <li>合同编号、签订日期</li>
+            <li>原料信息（类型、数量、单价、总金额）</li>
+            <li>质量要求（可自定义）</li>
+            <li>处置路线与工艺</li>
+            <li>运输方式、交付地点</li>
+            <li>付款方式</li>
+            <li>违约责任、争议解决、合同有效期</li>
+            <li>甲乙双方签章栏</li>
+          </ul>
+          <p class="mt-4 text-emerald-700">✨ 您也可以从推荐结果页面直接跳转，系统会自动填充原料和路线。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    document.getElementById('generateBtn').addEventListener('click', async () => {
+      const payload = {
+        material: document.getElementById('material').value,
+        route_name: document.getElementById('routeName').value,
+        tonnage: parseFloat(document.getElementById('tonnage').value),
+        price_per_ton: parseFloat(document.getElementById('price').value),
+        quality_requirements: document.getElementById('quality').value,
+        transport_mode: document.getElementById('transportMode').value,
+        delivery_location: document.getElementById('deliveryLocation').value,
+        payment_terms: document.getElementById('paymentTerms').value,
+        contract_period: document.getElementById('contractPeriod').value
+      };
+      try {
+        const response = await fetch('/api/generate_contract', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!response.ok) throw new Error('生成失败');
+        // 下载文件
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `合同_${payload.material}_${payload.route_name}.docx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+      } catch (err) {
+        alert('生成合同失败：' + err.message);
+      }
+    });
+
+    // 支持从URL参数预填充（例如从推荐结果跳转时带上参数）
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('material')) document.getElementById('material').value = urlParams.get('material');
+    if (urlParams.has('route')) document.getElementById('routeName').value = urlParams.get('route');
+    if (urlParams.has('tonnage')) document.getElementById('tonnage').value = urlParams.get('tonnage');
+  </script>
+</body>
+</html>

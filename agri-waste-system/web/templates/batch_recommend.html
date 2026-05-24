@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    * { font-family: 'Inter', system-ui, sans-serif; }
+    body { animation: fadeIn 0.4s ease; background: radial-gradient(circle at 10% 30%, rgba(46,125,50,0.03), rgba(255,255,255,0.9)); }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .glass-card { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3); }
+    .card-hover { transition: all 0.2s ease; }
+    .card-hover:hover { transform: translateY(-2px); box-shadow: 0 20px 25px -12px rgba(0, 0, 0, 0.1); }
+    .gantt-bar { transition: width 0.5s ease; }
+    .file-drop-area { border: 2px dashed #cbd5e1; transition: all 0.2s; }
+    .file-drop-area:hover { border-color: #2e7d32; background: rgba(46,125,50,0.05); }
+  </style>
+</head>
+<body class="min-h-screen">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <header class="flex justify-between items-center mb-8">
+      <a href="/" class="flex items-center gap-1 text-slate-500 hover:text-emerald-600 text-sm">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i> 返回首页
+      </a>
+      <div class="flex gap-2">
+        <a href="/grading" class="text-sm text-slate-500 hover:text-emerald-600"><i data-lucide="image" class="inline w-4 h-4 mr-1"></i> 分级教学</a>
+        <a href="/recommend" class="text-sm text-slate-500 hover:text-emerald-600"><i data-lucide="sparkles" class="inline w-4 h-4 mr-1"></i> 智能推荐</a>
+      </div>
+    </header>
+
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+        <i data-lucide="layers" class="w-8 h-8 text-emerald-600"></i>
+        批量推荐与供应链匹配
+      </h1>
+      <p class="mt-2 text-slate-600">上传多批次副产物清单，系统自动进行产能优化分配，最大化总效益。</p>
+    </div>
+
+    <div class="grid gap-8 lg:grid-cols-3">
+      <!-- 左侧：上传区域 -->
+      <div class="lg:col-span-1 space-y-6">
+        <div class="glass-card rounded-2xl p-6">
+          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4">
+            <i data-lucide="upload" class="w-5 h-5 text-emerald-600"></i> 上传批次数据
+          </h2>
+          <div id="dropArea" class="file-drop-area rounded-xl p-8 text-center cursor-pointer transition">
+            <i data-lucide="file-spreadsheet" class="w-10 h-10 mx-auto text-emerald-500 mb-3"></i>
+            <p class="text-sm text-slate-600">点击或拖拽上传文件</p>
+            <p class="text-xs text-slate-400 mt-1">支持 .xlsx, .csv</p>
+            <input type="file" id="fileInput" accept=".xlsx,.csv" class="hidden" />
+          </div>
+          <div id="fileInfo" class="mt-4 hidden">
+            <div class="flex items-center justify-between bg-emerald-50 rounded-xl p-3">
+              <div class="flex items-center gap-2">
+                <i data-lucide="file-text" class="w-4 h-4 text-emerald-600"></i>
+                <span id="fileName" class="text-sm text-slate-700"></span>
+              </div>
+              <button id="clearFileBtn" class="text-rose-500 hover:text-rose-700">
+                <i data-lucide="x" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- 产能配置区域（可编辑） -->
+          <div class="mt-6">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-sm font-semibold text-slate-700 flex items-center gap-1">
+                <i data-lucide="factory" class="w-4 h-4"></i> 路线产能上限（吨/年）
+              </h3>
+              <button id="resetCapacitiesBtn" class="text-xs text-emerald-600 hover:text-emerald-700">重置默认</button>
+            </div>
+            <div id="capacitiesContainer" class="space-y-2 max-h-64 overflow-y-auto pr-2">
+              <!-- 动态加载路线产能输入框 -->
+              <div class="text-center text-slate-400 text-sm">请先上传文件以加载路线列表</div>
+            </div>
+          </div>
+
+          <button id="submitBtn" disabled class="mt-6 w-full rounded-xl bg-emerald-600 py-3 text-white font-semibold shadow-md hover:bg-emerald-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+            <i data-lucide="bar-chart-3" class="w-4 h-4"></i> 开始优化分配
+          </button>
+        </div>
+
+        <!-- 模板下载 -->
+        <div class="glass-card rounded-2xl p-6">
+          <h2 class="text-sm font-semibold text-slate-700 mb-3">📄 模板格式说明</h2>
+          <div class="text-xs text-slate-500 space-y-2">
+            <p><span class="font-medium text-slate-700">必需列：</span>原料类型、霉变情况、来源情况、预估等级、预计吨数</p>
+            <p><span class="font-medium text-slate-700">专属字段：</span></p>
+            <ul class="list-disc pl-4 space-y-1">
+              <li>茶渣：茶渣_储存时间、茶渣_是否含调味</li>
+              <li>果渣：果渣_褐变情况</li>
+              <li>花生壳/板栗壳：泥沙情况</li>
+              <li>豆制品/粮食：含水率情况</li>
+              <li>中药残余：药材明确度</li>
+            </ul>
+            <button id="downloadTemplateBtn" class="mt-3 text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
+              <i data-lucide="download" class="w-3 h-3"></i> 下载示例模板
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右侧：结果展示 -->
+      <div class="lg:col-span-2 space-y-6">
+        <!-- 汇总卡片 -->
+        <div id="summaryCard" class="glass-card rounded-2xl p-6 hidden">
+          <div class="grid grid-cols-3 gap-4">
+            <div class="text-center">
+              <div class="text-2xl font-bold text-emerald-600" id="totalBatches">0</div>
+              <div class="text-xs text-slate-500">处理批次</div>
+            </div>
+            <div class="text-center">
+              <div class="text-2xl font-bold text-emerald-600" id="totalTonnage">0</div>
+              <div class="text-xs text-slate-500">分配吨数</div>
+            </div>
+            <div class="text-center">
+              <div class="text-2xl font-bold text-emerald-600" id="totalScore">0</div>
+              <div class="text-xs text-slate-500">总效益得分</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 分配方案表格 -->
+        <div id="allocationsCard" class="glass-card rounded-2xl p-6 hidden">
+          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4">
+            <i data-lucide="list-checks" class="w-5 h-5 text-emerald-600"></i> 优化分配方案
+          </h2>
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead class="bg-emerald-50">
+                <tr>
+                  <th class="px-4 py-2 text-left">批次</th>
+                  <th class="px-4 py-2 text-left">原料类型</th>
+                  <th class="px-4 py-2 text-right">预计吨数</th>
+                  <th class="px-4 py-2 text-left">分配路线</th>
+                  <th class="px-4 py-2 text-right">分配吨数</th>
+                  <th class="px-4 py-2 text-right">得分/吨</th>
+                  <th class="px-4 py-2 text-right">效益</th>
+                </tr>
+              </thead>
+              <tbody id="allocationsTable"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 路线产能甘特图 -->
+        <div id="ganttCard" class="glass-card rounded-2xl p-6 hidden">
+          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4">
+            <i data-lucide="chart-column" class="w-5 h-5 text-emerald-600"></i> 路线产能占用（甘特图）
+          </h2>
+          <div id="ganttContainer" class="space-y-4"></div>
+        </div>
+
+        <!-- 批次汇总 -->
+        <div id="batchSummaryCard" class="glass-card rounded-2xl p-6 hidden">
+          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2 mb-4">
+            <i data-lucide="package" class="w-5 h-5 text-emerald-600"></i> 批次分配汇总
+          </h2>
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead class="bg-emerald-50">
+                <tr>
+                  <th class="px-4 py-2 text-left">批次</th>
+                  <th class="px-4 py-2 text-left">原料类型</th>
+                  <th class="px-4 py-2 text-right">预计吨数</th>
+                  <th class="px-4 py-2 text-right">已分配吨数</th>
+                  <th class="px-4 py-2 text-right">未分配吨数</th>
+                </tr>
+              </thead>
+              <tbody id="batchSummaryTable"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 加载状态 -->
+        <div id="loadingState" class="glass-card rounded-2xl p-12 text-center hidden">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-3"></div>
+          <p class="text-slate-500">正在优化分配，请稍候...</p>
+        </div>
+
+        <div id="errorState" class="rounded-2xl bg-rose-50 p-6 text-center hidden">
+          <i data-lucide="alert-circle" class="w-8 h-8 text-rose-500 mx-auto mb-2"></i>
+          <p id="errorMsg" class="text-rose-600"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    // DOM 元素
+    const dropArea = document.getElementById('dropArea');
+    const fileInput = document.getElementById('fileInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileNameSpan = document.getElementById('fileName');
+    const clearFileBtn = document.getElementById('clearFileBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    const capacitiesContainer = document.getElementById('capacitiesContainer');
+    const resetCapacitiesBtn = document.getElementById('resetCapacitiesBtn');
+    const downloadTemplateBtn = document.getElementById('downloadTemplateBtn');
+
+    let selectedFile = null;
+    let routeCapacities = {};  // {路线名称: 产能上限}
+    let allRoutesList = [];     // 从文件解析出的所有路线名称
+
+    // 拖拽上传
+    dropArea.addEventListener('click', () => fileInput.click());
+    dropArea.addEventListener('dragover', (e) => { e.preventDefault(); dropArea.style.borderColor = '#2e7d32'; });
+    dropArea.addEventListener('dragleave', () => dropArea.style.borderColor = '#cbd5e1');
+    dropArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropArea.style.borderColor = '#cbd5e1';
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length) handleFile(e.target.files[0]);
+    });
+
+    function handleFile(file) {
+      selectedFile = file;
+      fileNameSpan.textContent = file.name;
+      fileInfo.classList.remove('hidden');
+      submitBtn.disabled = false;
+      // 解析文件获取路线列表（用于产能配置）
+      parseFileForRoutes(file);
+    }
+
+    clearFileBtn.addEventListener('click', () => {
+      selectedFile = null;
+      fileInfo.classList.add('hidden');
+      fileInput.value = '';
+      submitBtn.disabled = true;
+      capacitiesContainer.innerHTML = '<div class="text-center text-slate-400 text-sm">请先上传文件以加载路线列表</div>';
+      allRoutesList = [];
+    });
+
+    // 解析文件，提取所有可能的路线名称（通过调用后端预览或前端解析）
+    async function parseFileForRoutes(file) {
+      const formData = new FormData();
+      formData.append('file', file);
+      try {
+        const res = await fetch('/api/batch_preview', {
+          method: 'POST',
+          body: formData,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          allRoutesList = data.routes || [];
+          loadCapacitiesUI(allRoutesList);
+        } else {
+          // 降级：前端简单解析获取原料类型，然后基于原料类型模拟路线
+          const reader = new FileReader();
+          reader.onload = async (e) => {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(sheet);
+            const materials = [...new Set(rows.map(r => r['原料类型']).filter(Boolean))];
+            // 基于原料类型模拟路线（简化）
+            const mockRoutes = [];
+            for (const m of materials) {
+              if (m === '茶渣') mockRoutes.push('茶渣制生物炭/吸附材料', '茶渣发酵生产有机肥', '茶渣提取茶多酚');
+              else if (m.includes('果渣')) mockRoutes.push('果渣提取果胶', '果渣生产饲料', '果渣制备酵素');
+              else if (m === '花生壳/板栗壳') mockRoutes.push('花生壳制备活性炭', '花生壳生产板材');
+              else if (m === '豆制品/粮食发酵副产物') mockRoutes.push('豆制品副产物生产蛋白饲料', '豆制品副产物厌氧发酵产沼气');
+              else if (m === '中药残余废弃物') mockRoutes.push('中药残余提取黄酮', '中药渣制备生物质颗粒燃料', '中药渣堆肥');
+            }
+            allRoutesList = [...new Set(mockRoutes)];
+            loadCapacitiesUI(allRoutesList);
+          };
+          reader.readAsArrayBuffer(file);
+        }
+      } catch (err) {
+        console.error('预览失败', err);
+      }
+    }
+
+    // 加载产能输入UI
+    function loadCapacitiesUI(routes) {
+      if (!routes.length) {
+        capacitiesContainer.innerHTML = '<div class="text-center text-slate-400 text-sm">未识别到路线，请检查文件</div>';
+        return;
+      }
+      // 默认产能映射
+      const defaultCaps = {
+        "茶渣制生物炭/吸附材料": 500, "茶渣发酵生产有机肥": 800, "茶渣提取茶多酚": 200,
+        "果渣提取果胶": 300, "果渣生产饲料": 600, "果渣制备酵素": 150,
+        "花生壳制备活性炭": 400, "花生壳生产板材": 500,
+        "豆制品副产物生产蛋白饲料": 700, "豆制品副产物厌氧发酵产沼气": 600,
+        "中药残余提取黄酮": 200, "中药渣制备生物质颗粒燃料": 800, "中药渣堆肥": 500,
+      };
+      let html = '';
+      for (const route of routes) {
+        const defaultCap = defaultCaps[route] || 300;
+        routeCapacities[route] = defaultCap;
+        html += `
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-xs text-slate-600 truncate flex-1" title="${route}">${route.length > 20 ? route.slice(0,20)+'…' : route}</span>
+            <input type="number" class="capacity-input w-24 rounded-lg border border-emerald-200 px-2 py-1 text-xs" data-route="${route}" value="${defaultCap}" step="10" min="0">
+            <span class="text-xs text-slate-400">吨/年</span>
+          </div>
+        `;
+      }
+      capacitiesContainer.innerHTML = html;
+      // 绑定输入事件
+      document.querySelectorAll('.capacity-input').forEach(input => {
+        input.addEventListener('change', (e) => {
+          const route = input.dataset.route;
+          routeCapacities[route] = parseFloat(input.value) || 0;
+        });
+      });
+    }
+
+    resetCapacitiesBtn.addEventListener('click', () => {
+      if (allRoutesList.length) loadCapacitiesUI(allRoutesList);
+    });
+
+    // 下载模板
+    downloadTemplateBtn.addEventListener('click', () => {
+      const templateData = [
+        {
+          "原料类型": "茶渣", "霉变情况": "无", "来源情况": "明确可追溯", "预估等级": "优", "预计吨数": 120,
+          "茶渣_储存时间": "否", "茶渣_是否含调味": "否", "果渣_褐变情况": "", "泥沙情况": "", "含水率情况": "", "药材明确度": ""
+        },
+        {
+          "原料类型": "果渣（柑橘/葡萄/猕猴桃等）", "霉变情况": "轻度", "来源情况": "基本可追溯", "预估等级": "良", "预计吨数": 80,
+          "茶渣_储存时间": "", "茶渣_是否含调味": "", "果渣_褐变情况": "否", "泥沙情况": "", "含水率情况": "", "药材明确度": ""
+        },
+        {
+          "原料类型": "花生壳/板栗壳", "霉变情况": "无", "来源情况": "明确可追溯", "预估等级": "优", "预计吨数": 200,
+          "茶渣_储存时间": "", "茶渣_是否含调味": "", "果渣_褐变情况": "", "泥沙情况": "否", "含水率情况": "", "药材明确度": ""
+        }
+      ];
+      const ws = XLSX.utils.json_to_sheet(templateData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "批次数据");
+      XLSX.writeFile(wb, "批量推荐模板.xlsx");
+    });
+
+    // 提交批量推荐
+    submitBtn.addEventListener('click', async () => {
+      if (!selectedFile) return;
+
+      // 隐藏之前结果，显示加载
+      document.getElementById('summaryCard').classList.add('hidden');
+      document.getElementById('allocationsCard').classList.add('hidden');
+      document.getElementById('ganttCard').classList.add('hidden');
+      document.getElementById('batchSummaryCard').classList.add('hidden');
+      document.getElementById('errorState').classList.add('hidden');
+      document.getElementById('loadingState').classList.remove('hidden');
+      submitBtn.disabled = true;
+
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('capacities_json', JSON.stringify(routeCapacities));
+
+      try {
+        const res = await fetch('/api/batch_recommend', {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '请求失败');
+
+        // 显示结果
+        displayResults(data);
+      } catch (err) {
+        document.getElementById('loadingState').classList.add('hidden');
+        document.getElementById('errorState').classList.remove('hidden');
+        document.getElementById('errorMsg').textContent = err.message;
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    function displayResults(data) {
+      document.getElementById('loadingState').classList.add('hidden');
+
+      // 汇总卡片
+      document.getElementById('totalBatches').textContent = data.total_batches;
+      document.getElementById('totalTonnage').textContent = data.total_allocated_tonnage;
+      document.getElementById('totalScore').textContent = data.total_benefit_score;
+      document.getElementById('summaryCard').classList.remove('hidden');
+
+      // 分配表格
+      const allocationsTable = document.getElementById('allocationsTable');
+      allocationsTable.innerHTML = '';
+      for (const alloc of data.allocations) {
+        const row = allocationsTable.insertRow();
+        row.insertCell(0).textContent = alloc.batch_id;
+        row.insertCell(1).textContent = alloc.原料类型;
+        row.insertCell(2).textContent = alloc.预计吨数;
+        row.insertCell(3).textContent = alloc.路线名称;
+        row.insertCell(4).textContent = alloc.分配吨数;
+        row.insertCell(5).textContent = alloc.匹配得分;
+        row.insertCell(6).innerHTML = `<span class="font-semibold text-emerald-600">${alloc.贡献效益}</span>`;
+      }
+      document.getElementById('allocationsCard').classList.remove('hidden');
+
+      // 甘特图（路线产能占用）
+      const ganttContainer = document.getElementById('ganttContainer');
+      ganttContainer.innerHTML = '';
+      for (const cap of data.route_capacities) {
+        const usagePercent = (cap.已分配量 / cap.总产能上限) * 100;
+        const barColor = usagePercent > 90 ? 'bg-rose-500' : (usagePercent > 60 ? 'bg-amber-500' : 'bg-emerald-500');
+        ganttContainer.innerHTML += `
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="font-medium truncate max-w-[200px]" title="${cap.路线名称}">${cap.路线名称.length > 25 ? cap.路线名称.slice(0,25)+'…' : cap.路线名称}</span>
+              <span>${cap.已分配量} / ${cap.总产能上限} 吨</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-5 overflow-hidden">
+              <div class="${barColor} h-5 rounded-full gantt-bar" style="width: ${Math.min(usagePercent, 100)}%"></div>
+            </div>
+            <div class="text-right text-xs text-slate-400 mt-0.5">剩余 ${cap.剩余产能} 吨</div>
+          </div>
+        `;
+      }
+      document.getElementById('ganttCard').classList.remove('hidden');
+
+      // 批次汇总
+      const batchSummaryTable = document.getElementById('batchSummaryTable');
+      batchSummaryTable.innerHTML = '';
+      for (const batch of data.batch_details) {
+        const row = batchSummaryTable.insertRow();
+        const unallocated = batch.预计吨数 - batch.已分配吨数;
+        row.insertCell(0).textContent = batch.batch_id;
+        row.insertCell(1).textContent = batch.原料类型;
+        row.insertCell(2).textContent = batch.预计吨数;
+        row.insertCell(3).textContent = batch.已分配吨数;
+        row.insertCell(4).innerHTML = unallocated > 0 ? `<span class="text-amber-600">${unallocated}</span>` : '<span class="text-emerald-600">0</span>';
+      }
+      document.getElementById('batchSummaryCard').classList.remove('hidden');
+
+      lucide.createIcons();
+    }
+  </script>
+</body>
+</html>
