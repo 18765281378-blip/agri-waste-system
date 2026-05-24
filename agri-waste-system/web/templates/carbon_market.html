@@ -58,9 +58,13 @@
         <div class="space-y-6">
             <div class="glass-card rounded-2xl p-6">
                 <h2 class="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
-                    <i data-lucide="trending-up" class="w-5 h-5 text-emerald-600"></i> 碳价走势
+                    <i data-lucide="trending-up" class="w-5 h-5 text-emerald-600"></i> 全国碳市场 CEA 价格走势
                 </h2>
                 <canvas id="klineChart" height="250"></canvas>
+                <div class="mt-3 text-xs text-slate-500 leading-relaxed">
+                    数据口径：全国碳市场碳排放配额 CEA 公开行情，采用对应日期收盘价，单位：元/吨 CO₂e。<br>
+                    注：本模块用于碳积分模拟交易与ESG价值展示，不代表真实交易撮合。
+                </div>
             </div>
             <div class="glass-card rounded-2xl p-6">
                 <h2 class="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
@@ -133,9 +137,20 @@
         document.getElementById('balance').innerText = data.balance.toFixed(2);
     }
 
+    // 全国碳市场 CEA 真实公开行情数据（关键交易日收盘价）
+    // 说明：原页面从 /api/carbon-market/market/kline?days=30 获取模拟K线；
+    // 这里改为前端内置真实公开行情数据，避免展示随机模拟价格。
+    const CEA_REAL_PRICE_DATA = [
+        { date: "2022-05-30", open: 59.00, high: 59.00, low: 59.00, close: 59.00 },
+        { date: "2023-05-09", open: 56.00, high: 56.50, low: 56.00, close: 56.00 },
+        { date: "2024-04-08", open: 87.33, high: 87.67, low: null, close: 87.62 },
+        { date: "2025-05-15", open: 70.40, high: 70.44, low: 70.30, close: 70.40 },
+        { date: "2026-05-18", open: 84.40, high: 84.40, low: 82.10, close: 84.08 },
+        { date: "2026-05-22", open: 80.12, high: 81.00, low: 80.10, close: 80.16 }
+    ];
+
     async function loadKline() {
-        const res = await fetch('/api/carbon-market/market/kline?days=30');
-        const data = await res.json();
+        const data = { data: CEA_REAL_PRICE_DATA };
         const labels = data.data.map(d => d.date);
         const closes = data.data.map(d => d.close);
         if (klineChart) klineChart.destroy();
@@ -145,15 +160,58 @@
             data: {
                 labels: labels,
                 datasets: [{
-                    label: '碳价 (积分/吨)',
+                    label: '全国碳市场 CEA 收盘价（元/吨 CO₂e）',
                     data: closes,
                     borderColor: '#2e7d32',
-                    backgroundColor: 'rgba(46,125,50,0.1)',
+                    backgroundColor: 'rgba(46,125,50,0.10)',
+                    pointBackgroundColor: '#2e7d32',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
                     fill: true,
-                    tension: 0.3
+                    tension: 0.25
                 }]
             },
-            options: { responsive: true, maintainAspectRatio: true }
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#334155',
+                            font: { size: 12, weight: '600' }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return ` CEA收盘价：${context.parsed.y.toFixed(2)} 元/吨 CO₂e`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        title: {
+                            display: true,
+                            text: '元/吨 CO₂e',
+                            color: '#475569'
+                        },
+                        ticks: { color: '#64748b' },
+                        grid: { color: 'rgba(148,163,184,0.20)' }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: '公开行情日期',
+                            color: '#475569'
+                        },
+                        ticks: { color: '#64748b' },
+                        grid: { color: 'rgba(148,163,184,0.15)' }
+                    }
+                }
+            }
         });
     }
 
